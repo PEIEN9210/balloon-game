@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>氣球風險遊戲</title>
+<style>
+  :root {
+    /* ── Yellow × Purple palette ── */
+    --bg: #0d0a18;
+    --surface: #13102a;
+    --surface2: #1c1838;
+    --border: #3a2e6a;
+    --text: #f5f0ff;
+    --muted: #9080c0;
+    --primary: #a855f7;     /* vivid purple — main action */
+    --accent: #f5c300;      /* golden yellow — accent / positive */
+    --danger: #e040fb;      /* magenta-purple — danger */
+    --gold: #ffe033;        /* bright yellow — money / highlight */
+
+    /* map to legacy var names used throughout */
+    --blue: var(--primary);
+    --orange: var(--accent);
+    --red: var(--danger);
+    --green: var(--gold);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; font-size: 18px; background: var(--bg); color: var(--text); overflow-x: hidden; }
+  .screen { display: none; min-height: 100vh; }
+  .screen.active { display: flex; }
+  #screen-password, #screen-intro, #screen-result { flex-direction: column; align-items: center; justify-content: center; padding: 24px; }
+  .panel { width: 100%; max-width: 460px; border: 1px solid var(--border); background: var(--surface); padding: 20px; }
+
+  .title {
+    font-size: clamp(30px, 8vw, 64px); font-weight: 900; margin-bottom: 10px;
+    background: linear-gradient(120deg, #f5c300 0%, #c084fc 60%, #a855f7 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    filter: drop-shadow(0 0 18px rgba(168,85,247,.5));
+  }
+  .sub { color: var(--muted); line-height: 1.7; text-align: center; max-width: 600px; margin-bottom: 20px; }
+  .btn {
+    border: 1px solid var(--primary); background: var(--primary); color: #fff;
+    padding: 14px 16px; font-size: 18px; font-weight: 700; cursor: pointer;
+    transition: background .2s, border-color .2s, box-shadow .2s;
+    box-shadow: 0 0 12px rgba(168,85,247,.35);
+  }
+  .btn:hover { background: #9333ea; border-color: #9333ea; box-shadow: 0 0 20px rgba(168,85,247,.6); }
+  .btn.alt { background: transparent; border-color: var(--gold); color: var(--gold); box-shadow: none; }
+  .btn.alt:hover { background: rgba(255,224,51,.1); box-shadow: 0 0 12px rgba(255,224,51,.3); }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+  #screen-game { flex-direction: column; align-items: center; padding: 16px 12px 28px; overflow: visible; }
+  .topbar, .progress-wrap, .pump-wrap, .mode-wrap, .market-grid, .arena, .actions { width: 100%; max-width: 980px; }
+  .topbar { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 10px; }
+  .label { font-size: 15px; color: var(--muted); }
+  .value { font-size: 30px; font-weight: 800; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .value.money { color: var(--gold); text-shadow: 0 0 10px rgba(255,224,51,.4); }
+  .center { text-align: center; } .right { text-align: right; }
+  .badge { margin-top: 6px; display: inline-block; padding: 4px 10px; font-size: 15px; font-weight: 700; }
+  .badge.retire { color: var(--accent); background: rgba(245,195,0,.12); border: 1px solid rgba(245,195,0,.4); }
+  .badge.bonus  { color: var(--gold);   background: rgba(255,224,51,.12); border: 1px solid rgba(255,224,51,.4); }
+
+  .progress { height: 4px; background: var(--border); }
+  .progress-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--primary)); transition: width .3s; }
+  .pump-wrap { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+  .pump-meter { flex: 1; height: 7px; background: var(--border); }
+  .pump-fill { height: 100%; width: 0; background: var(--primary); }
+  .pump-text { min-width: 100px; color: var(--muted); text-align: right; font-size: 16px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+  .mode-wrap { margin-top: 10px; display: grid; grid-template-columns: 1fr auto; gap: 10px; }
+  .mode-tabs, .auto-target { border: 1px solid var(--border); background: var(--surface); padding: 8px; }
+  .mode-tabs { display: flex; gap: 8px; }
+  .mode-tab { flex: 1; padding: 10px; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; font-size: 16px; transition: .2s; }
+  .mode-tab.active { color: var(--accent); border-color: rgba(245,195,0,.5); background: rgba(245,195,0,.1); }
+  .auto-target { display: flex; align-items: center; gap: 8px; }
+  .auto-target input { width: 90px; padding: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-size: 16px; }
+
+  /* ── Market grid ── */
+  .market-grid { margin-top: 10px; border: 1px solid var(--border); background: var(--surface); padding: 10px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .market-card { border: 1px solid var(--border); background: var(--surface2); padding: 10px; min-height: 72px; }
+  .market-key { color: var(--muted); font-size: 13px; }
+  .market-val { margin-top: 3px; font-size: 22px; font-weight: 800; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text); }
+  .market-sub { margin-top: 3px; color: var(--muted); font-size: 15px; }
+
+  .arena { min-height: clamp(330px, 43vh, 520px); display: flex; align-items: center; justify-content: center; position: relative; overflow: visible; }
+  .balloon { display: flex; flex-direction: column; align-items: center; transition: transform .15s; }
+  #balloonSvg { width: min(48vw, 260px); height: auto; overflow: visible; filter: drop-shadow(0 0 22px #a855f7); }
+  .string { width: 2px; height: 68px; background: var(--muted); opacity: .4; margin-top: -2px; }
+  .boom { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; opacity: 0; transition: opacity .2s; }
+  .boom.show { opacity: 1; }
+  .boom strong { font-size: 48px; color: var(--danger); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; text-shadow: 0 0 20px rgba(224,64,251,.7); }
+
+  .actions { max-width: 620px; display: flex; gap: 12px; }
+  .actions button { flex: 1; padding: 16px; font-size: 20px; font-weight: 700; cursor: pointer; transition: .2s; }
+  #btnPump  { background: var(--primary); color: #fff; border: 1px solid var(--primary); box-shadow: 0 0 14px rgba(168,85,247,.4); }
+  #btnPump:hover:not(:disabled)  { background: #9333ea; border-color: #9333ea; box-shadow: 0 0 22px rgba(168,85,247,.7); }
+  #btnCollect { background: transparent; color: var(--gold); border: 1px solid var(--gold); }
+  #btnCollect:hover:not(:disabled) { background: rgba(255,224,51,.1); box-shadow: 0 0 14px rgba(255,224,51,.3); }
+  #btnPump:disabled, #btnCollect:disabled { opacity: .35; cursor: not-allowed; box-shadow: none; }
+
+  /* ── Push notification — ENLARGED ── */
+  .push {
+    position: fixed; top: 72px; right: 12px; max-width: 420px;
+    border: 1px solid var(--border);
+    border-left: 5px solid var(--accent);
+    background: var(--surface2);
+    padding: 16px 20px;
+    opacity: 0; transform: translateX(16px); transition: .3s; pointer-events: none;
+    box-shadow: 0 4px 28px rgba(168,85,247,.25);
+    border-radius: 2px;
+  }
+  .push .label {
+    font-size: 14px; color: var(--muted); margin-bottom: 8px;
+    letter-spacing: .06em; text-transform: uppercase;
+  }
+  .push #pushText {
+    font-size: 24px; font-weight: 800; line-height: 1.45; color: var(--accent);
+    text-shadow: 0 0 12px rgba(245,195,0,.35);
+  }
+  .push.loss { border-left-color: var(--danger); box-shadow: 0 4px 28px rgba(224,64,251,.3); }
+  .push.loss #pushText { color: var(--danger); text-shadow: 0 0 12px rgba(224,64,251,.4); }
+  .push.show { opacity: 1; transform: none; }
+
+  .bpm { position: fixed; right: 10px; bottom: 10px; color: var(--muted); display: flex; align-items: center; gap: 6px; font-size: 15px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); animation: beat 1s infinite; }
+  .dot.mid  { background: var(--accent); }
+  .dot.fast { background: var(--danger); }
+
+  .score { font-size: clamp(48px, 11vw, 90px); color: var(--gold); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; margin: 8px 0; text-shadow: 0 0 20px rgba(255,224,51,.5); }
+  .stats { width: 100%; max-width: 560px; margin: 16px 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .stat { border: 1px solid var(--border); background: var(--surface); padding: 10px; text-align: center; }
+  .stat .v { font-size: 26px; font-weight: 800; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--accent); }
+  .person { width: 100%; max-width: 560px; border: 1px solid var(--border); background: var(--surface); padding: 16px; }
+  .person h3 { font-size: 34px; margin: 6px 0 10px; }
+
+  @keyframes beat { 0%,100% { transform: scale(1); } 50% { transform: scale(1.6); opacity: .45; } }
+  @keyframes flo  { 0%,100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-10px) rotate(1deg); } }
+  @keyframes shak { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-3deg); } 75% { transform: rotate(3deg); } }
+  @keyframes pop  { to { transform: scale(0); opacity: 0; } }
+  .floating { animation: flo 3s ease-in-out infinite; }
+  .shaking  { animation: shak .18s infinite !important; }
+  .popping  { animation: pop .25s forwards !important; }
+
+  /* subtle purple-gold ambient glow */
+  body::before {
+    content: ""; position: fixed; inset: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse at 15% 15%, rgba(168,85,247,.08) 0%, transparent 55%),
+      radial-gradient(ellipse at 85% 85%, rgba(245,195,0,.06) 0%, transparent 55%);
+    z-index: 0;
+  }
+  #screen-game, #screen-intro, #screen-result, #screen-password { position: relative; z-index: 1; }
+
+  @media (max-width: 960px) { .mode-wrap { grid-template-columns: 1fr; } .market-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 680px) {
+    .topbar { grid-template-columns: 1fr; } .center, .right { text-align: center; }
+    .actions, .stats, .market-grid { grid-template-columns: 1fr; display: grid; }
+    .push { max-width: calc(100vw - 24px); right: 12px; }
+    .push #pushText { font-size: 20px; }
+  }
+</style>
+</head>
+<body>
+  <div id="screen-password" class="screen active">
+    <div class="title">密碼驗證</div>
+    <div class="panel">
+      <div class="label">請輸入進入密碼</div>
+      <input id="pwInput" type="password" style="width:100%;padding:12px;margin:10px 0;background:var(--surface2);border:1px solid var(--border);color:var(--text)" />
+      <div id="pwError" class="mono" style="color:var(--danger);min-height:18px;margin-bottom:10px"></div>
+      <button class="btn" style="width:100%" onclick="checkPassword()">登入遊戲</button>
+    </div>
+  </div>
+
+  <div id="screen-intro" class="screen">
+    <div class="title">氣球風險挑戰</div>
+    <p class="sub">每按一次打氣可增加 +$100，但氣球隨時可能爆掉。爆掉就失去本回合金額，見好就收才能把錢帶走。</p>
+    <button class="btn" onclick="startGame()">開始遊戲</button>
+  </div>
+
+  <div id="screen-game" class="screen">
+    <div class="topbar">
+      <div><div class="label">累積總金額</div><div class="value money" id="totalMoney">$0</div></div>
+      <div class="center"><div class="label" id="roundDisplay">第 1 回合 / 20</div><div class="badge retire" id="accountBadge">退休帳戶</div></div>
+      <div class="right"><div class="label">本回合金額</div><div class="value" id="currentMoney">$0</div></div>
+    </div>
+    <div class="progress-wrap"><div class="progress"><div class="progress-fill" id="progressFill"></div></div></div>
+    <div class="pump-wrap"><div class="pump-meter"><div class="pump-fill" id="pumpFill"></div></div><div class="pump-text" id="pumpLabel">0 / 128</div></div>
+    <div class="mode-wrap">
+      <div class="mode-tabs">
+        <button class="mode-tab active" id="modeManual" onclick="setInputMode('manual')">手動</button>
+        <button class="mode-tab" id="modeHold"   onclick="setInputMode('hold')">按住連打</button>
+        <button class="mode-tab" id="modeAuto"   onclick="setInputMode('autoTarget')">自動目標</button>
+      </div>
+      <div class="auto-target"><span class="label">目標值</span><input id="autoTargetInput" type="number" min="1" max="127" value="32" onchange="updateAutoTarget(this.value)" /></div>
+    </div>
+    <div class="market-grid">
+      <div class="market-card"><div class="market-key">價格指數</div><div class="market-val" id="marketPrice">100.0</div><div class="market-sub" id="marketChange">+0.00%</div></div>
+      <div class="market-card"><div class="market-key">線上玩家</div><div class="market-val" id="marketPlayers">0</div><div class="market-sub">即時</div></div>
+      <div class="market-card"><div class="market-key">當前區間爆球數</div><div class="market-val" id="marketBurstBand">0</div><div class="market-sub" id="marketBandLabel">0-15</div></div>
+      <div class="market-card"><div class="market-key">你的位置</div><div class="market-val" id="marketPercentile">0%</div><div class="market-sub" id="marketNearbyRisk">附近爆球率 0%</div></div>
+    </div>
+    <div class="arena">
+      <div class="balloon floating" id="balloonContainer">
+        <svg id="balloonSvg" width="220" height="260" viewBox="0 0 220 260">
+          <ellipse id="balloonBody" cx="110" cy="105" rx="52" ry="62" fill="#a855f7" opacity=".92"></ellipse>
+          <ellipse cx="88" cy="84" rx="14" ry="10" fill="rgba(255,255,255,.25)" transform="rotate(-20,88,84)"></ellipse>
+          <polygon id="balloonTip" points="105,168 110,177 115,168" fill="#a855f7"></polygon>
+        </svg>
+        <div class="string"></div>
+      </div>
+      <div class="boom" id="explosion"><strong>爆炸</strong><div class="mono" id="explosionSub" style="color:var(--muted);margin-top:6px">本回合失敗</div></div>
+    </div>
+    <div class="actions">
+      <button id="btnPump" onclick="onPumpClick(event)" onpointerdown="handlePumpPointerDown(event)" onpointerup="handlePumpPointerUp()" onpointerleave="handlePumpPointerUp()" onpointercancel="handlePumpPointerUp()">打氣 +$100</button>
+      <button id="btnCollect" onclick="collect()">收手兌現</button>
+    </div>
+    <div class="push" id="pushNotif"><div class="label">市場訊號</div><div id="pushText"></div></div>
+    <div class="bpm"><div class="dot" id="bpmDot"></div><span id="bpmText">60 心跳/分</span></div>
+  </div>
+
+  <div id="screen-result" class="screen">
+    <div class="label">遊戲結束</div>
+    <div class="score" id="finalScore">$0</div>
+    <div class="sub" style="margin-bottom:0">共 20 回合</div>
+    <div class="stats">
+      <div class="stat"><div class="v" id="statAvgPumps">0</div><div class="label">平均打氣次數</div></div>
+      <div class="stat"><div class="v" id="statPopCount">0</div><div class="label">爆球回合</div></div>
+      <div class="stat"><div class="v" id="statShift">0</div><div class="label">風格偏移</div></div>
+    </div>
+    <div class="person" id="personCard">
+      <div class="label">決策風格</div>
+      <h3 id="personName">理性型</h3>
+      <div id="personDesc" style="color:var(--muted);line-height:1.7">在不確定情境下能維持穩定策略。</div>
+      <div style="margin-top:8px"><strong>建議：</strong> <span id="personTip">維持固定的風險上限。</span></div>
+    </div>
+    <div style="width:100%;max-width:560px;margin-top:14px">
+      <button class="btn" style="width:100%;margin-bottom:8px" onclick="downloadCSV()">下載 CSV</button>
+      <button class="btn alt" style="width:100%" onclick="restartGame()">重新開始</button>
+    </div>
+  </div>
+
+<script>
+const TOTAL_ROUNDS = 20, ACCOUNT_SWITCH = 11, MARKET_API_URL = "";
+const PUSH_BASE_MS = 15000, PUSH_JITTER_MS = 5000;
+
+let state = {
+  round: 1, pumps: 0, burstAt: 0, totalMoney: 0, currentMoney: 0,
+  totalPops: 0, locked: false, popLatencyStart: 0, lastPumpTime: 0,
+  roundStartTime: 0, firstPumpThisRound: true,
+  inputMode: "manual", autoTarget: 32, autoPumpTimer: null, holdPumpTimer: null,
+  audioMaster: 0.9, audioHeartbeatBase: 0.35, audioHeartbeatDangerBoost: 1.8
+};
+
+let dataLog = [], pushTimer = null, pushIntervalId = null, marketIntervalId = null,
+    audioCtx = null, heartbeatTimer = null, currentBPM = 60,
+    pushActiveType = null, lastPushToneAt = 0,
+    marketSeed = 1337, marketTick = 0, latestMarketSnapshot = null;
+
+const pushMessages = [
+  { type: "loss", text: "玩家 A 在 82 次爆球，損失 $8,200" },
+  { type: "gain", text: "玩家 B 在 64 次收手，帶走 $6,400" },
+  { type: "loss", text: "玩家 C 連續 3 回合爆球" },
+  { type: "gain", text: "玩家 D 本回合獲得 $9,500" },
+  { type: "loss", text: "玩家 E 在 90 次爆球，損失 $9,000" },
+  { type: "gain", text: "玩家 F 提早離場，拿到 $3,200" }
+];
+
+const personalities = {
+  emotional: { name: "情緒型", desc: "在虧損後會快速提高風險。",       tip: "打氣前先設定不可超過的上限。", color: "#e040fb" },
+  anxious:   { name: "焦慮型", desc: "常為了避免回撤而提早收手。",     tip: "目標值可逐步小幅提高。",       color: "#a855f7" },
+  rational:  { name: "理性型", desc: "每回合策略維持穩定且一致。",     tip: "持續使用固定規則。",           color: "#ffe033" },
+  herding:   { name: "從眾型", desc: "容易受外部訊號影響決策。",       tip: "把訊號當參考，不要當指令。",   color: "#f5c300" }
+};
+
+const byId = id => document.getElementById(id);
+function showScreen(id) { document.querySelectorAll(".screen").forEach(s => s.classList.remove("active")); const el = byId(id); if (el) el.classList.add("active"); window.scrollTo(0, 0); }
+function checkPassword() { const i = byId("pwInput"), e = byId("pwError"), ok = atob("d2FoYWhhMDAwNw=="); if (i.value === ok) { e.textContent = ""; showScreen("screen-intro"); } else { e.textContent = "密碼錯誤，請再試一次"; i.value = ""; } }
+function initAudio() { try { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === "suspended") audioCtx.resume(); } catch (_) {} }
+function hbGain(r) { const b = state.audioHeartbeatBase; let g = b; if (r >= 0.8) g = b * state.audioHeartbeatDangerBoost; else if (r >= 0.65) g = b * 1.4; return Math.min(g * state.audioMaster, 0.85); }
+function playHeartbeat(bpm, r = state.pumps / 128) { if (!audioCtx) return; clearTimeout(heartbeatTimer); const interval = 60000 / bpm, level = hbGain(r); (function beat() { if (!audioCtx) return; const n = audioCtx.currentTime, o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.connect(g); g.connect(audioCtx.destination); o.frequency.setValueAtTime(82, n); o.frequency.exponentialRampToValueAtTime(40, n + 0.08); g.gain.setValueAtTime(level, n); g.gain.exponentialRampToValueAtTime(0.001, n + 0.13); o.start(n); o.stop(n + 0.13); heartbeatTimer = setTimeout(beat, interval); })(); }
+function playPushTone(type) { if (!audioCtx) return; const nowMs = Date.now(); if (nowMs - lastPushToneAt < 4000) return; lastPushToneAt = nowMs; const now = audioCtx.currentTime, tones = type === "loss" ? [430, 320] : [520, 700]; tones.forEach((f, i) => { const o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.type = type === "loss" ? "triangle" : "sine"; o.frequency.setValueAtTime(f, now); o.connect(g); g.connect(audioCtx.destination); const t = now + i * 0.07; g.gain.setValueAtTime(0.12 * state.audioMaster, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.17); o.start(t); o.stop(t + 0.2); }); }
+function playPop() { if (!audioCtx) return; const n = audioCtx.currentTime, s = Math.floor(audioCtx.sampleRate * 0.14), b = audioCtx.createBuffer(1, s, audioCtx.sampleRate), d = b.getChannelData(0); for (let i = 0; i < s; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (s * 0.1)); const src = audioCtx.createBufferSource(), g = audioCtx.createGain(); src.buffer = b; g.gain.setValueAtTime(Math.min(1.4 * state.audioMaster, 1.4), n); g.gain.exponentialRampToValueAtTime(0.001, n + 0.18); src.connect(g); g.connect(audioCtx.destination); src.start(n); }
+function playCollect() { if (!audioCtx) return; const n = audioCtx.currentTime; [523, 659, 784].forEach((f, i) => { const o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.frequency.value = f; o.type = "sine"; o.connect(g); g.connect(audioCtx.destination); const t = n + i * 0.07; g.gain.setValueAtTime(0.15 * state.audioMaster, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.2); o.start(t); o.stop(t + 0.22); }); }
+function randomBurst() { return Math.floor(Math.random() * 128) + 1; }
+function accountType() { return state.round < ACCOUNT_SWITCH ? "retire" : "bonus"; }
+function setInputMode(m) { state.inputMode = m; stopAuto(); stopHold(); ["modeManual","modeHold","modeAuto"].forEach(id => byId(id).classList.remove("active")); byId(m === "manual" ? "modeManual" : m === "hold" ? "modeHold" : "modeAuto").classList.add("active"); byId("autoTargetInput").disabled = m !== "autoTarget"; updateUI(); }
+function updateAutoTarget(v) { const n = Math.min(127, Math.max(1, Number(v) || 32)); state.autoTarget = n; byId("autoTargetInput").value = String(n); updateUI(); }
+function stopAuto() { if (state.autoPumpTimer) { clearInterval(state.autoPumpTimer); state.autoPumpTimer = null; } }
+function stopHold() { if (state.holdPumpTimer) { clearInterval(state.holdPumpTimer); state.holdPumpTimer = null; } }
+function handlePumpPointerDown(e) { initAudio(); if (state.locked) return; if (state.inputMode === "hold") { e.preventDefault(); stopHold(); pumpOnce(true); state.holdPumpTimer = setInterval(() => pumpOnce(true), 120); } if (state.inputMode === "autoTarget") e.preventDefault(); }
+function handlePumpPointerUp() { stopHold(); }
+function onPumpClick() { initAudio(); if (state.locked) return; if (state.inputMode === "manual") pumpOnce(false); else if (state.inputMode === "autoTarget") startAuto(); }
+function startAuto() { if (state.locked || state.inputMode !== "autoTarget") return; stopAuto(); const t = state.autoTarget; state.autoPumpTimer = setInterval(() => { if (state.locked || state.pumps >= t) { stopAuto(); return; } pumpOnce(true); }, 120); }
+
+function pumpOnce(synthetic) {
+  if (state.locked) return;
+  const now = Date.now(), ci = state.lastPumpTime ? now - state.lastPumpTime : null;
+  const firstPumpLatency = state.firstPumpThisRound ? (now - state.roundStartTime) : null;
+  state.firstPumpThisRound = false; state.lastPumpTime = now;
+  state.pumps++; state.currentMoney += 100;
+  dataLog.push({ round: state.round, pump_number: state.pumps, account_type: accountType(), event: "pump", timestamp: now, click_interval_ms: ci, first_pump_latency_ms: firstPumpLatency, push_active: pushActiveType, synthetic: Boolean(synthetic) });
+  if (state.pumps >= state.burstAt) { doBurst(now); return; }
+  updateBalloon(); updateUI(); updateBPM(state.pumps);
+}
+
+function doBurst(now) {
+  state.locked = true; stopAuto(); stopHold(); state.totalPops++; playPop();
+  dataLog.push({ round: state.round, pump_number: state.pumps, account_type: accountType(), event: "burst", timestamp: now, click_interval_ms: null, push_active: pushActiveType, round_earned: 0, burst_at: state.burstAt });
+  byId("explosionSub").textContent = `第 ${state.pumps} 次爆球，損失 $${state.currentMoney.toLocaleString()}`;
+  const c = byId("balloonContainer"), ex = byId("explosion");
+  c.classList.remove("floating","shaking"); c.classList.add("popping"); ex.classList.add("show");
+  setBtns(true); state.popLatencyStart = Date.now();
+  setTimeout(() => { ex.classList.remove("show"); c.classList.remove("popping"); c.style.opacity = "0"; setTimeout(() => state.round < TOTAL_ROUNDS ? nextRound() : endGame(), 240); }, 1100);
+}
+
+function collect() {
+  if (state.locked || state.pumps === 0) return;
+  stopAuto(); stopHold(); state.locked = true;
+  const earned = state.currentMoney; state.totalMoney += earned; playCollect();
+  dataLog.push({ round: state.round, pump_number: state.pumps, account_type: accountType(), event: "collect", timestamp: Date.now(), click_interval_ms: null, push_active: pushActiveType, round_earned: earned, burst_at: state.burstAt });
+  setBtns(true); setTimeout(() => state.round < TOTAL_ROUNDS ? nextRound() : endGame(), 900);
+}
+
+function nextRound() {
+  stopAuto(); stopHold();
+  if (state.popLatencyStart) { const l = Date.now() - state.popLatencyStart, last = [...dataLog].reverse().find(d => d.event === "burst"); if (last) last.pop_latency_ms = l; state.popLatencyStart = 0; }
+  state.round++; state.pumps = 0; state.currentMoney = 0; state.burstAt = randomBurst();
+  state.locked = false; state.lastPumpTime = 0; state.roundStartTime = Date.now(); state.firstPumpThisRound = true;
+  resetBalloon(); updateUI(); updateBPM(0); setBtns(false);
+}
+
+function updateBalloon() {
+  const r = state.pumps / 128, body = byId("balloonBody"), tip = byId("balloonTip"),
+        svg = byId("balloonSvg"), c = byId("balloonContainer"),
+        rx = 52 + r * 30, ry = 62 + r * 35, y = 168 + (ry - 62);
+  body.setAttribute("rx", rx); body.setAttribute("ry", ry);
+  tip.setAttribute("points", `${105 + r * 5},${y} 110,${y + 9} ${115 - r * 5},${y}`);
+  /* purple → amber → magenta colour ramp */
+  let col = "#a855f7";
+  if (r >= 0.65) col = "#e040fb"; else if (r >= 0.35) col = "#f5c300";
+  body.setAttribute("fill", col); tip.setAttribute("fill", col);
+  svg.style.filter = `drop-shadow(0 0 ${20 + r * 40}px ${col})`;
+  if (r > 0.75) { c.classList.add("shaking"); c.classList.remove("floating"); }
+  else { c.classList.remove("shaking"); c.classList.add("floating"); }
+  const pf = byId("pumpFill"); pf.style.width = `${r * 100}%`; pf.style.background = col;
+}
+
+function resetBalloon() {
+  const body = byId("balloonBody"), tip = byId("balloonTip"), svg = byId("balloonSvg"), c = byId("balloonContainer");
+  body.setAttribute("rx", 52); body.setAttribute("ry", 62);
+  body.setAttribute("fill", "#a855f7"); tip.setAttribute("fill", "#a855f7");
+  tip.setAttribute("points", "105,168 110,177 115,168");
+  svg.style.filter = "drop-shadow(0 0 22px #a855f7)";
+  c.classList.add("floating"); c.classList.remove("shaking","popping"); c.style.opacity = "1";
+  byId("pumpFill").style.width = "0%"; byId("pumpFill").style.background = "#a855f7";
+}
+
+function updateBPM(p) {
+  const r = p / 128; let bpm = 60;
+  if (r >= 0.65) bpm = 140; else if (r >= 0.35) bpm = 90;
+  currentBPM = bpm; playHeartbeat(bpm, r);
+  const d = byId("bpmDot"), t = byId("bpmText");
+  d.className = "dot" + (bpm >= 140 ? " fast" : bpm >= 90 ? " mid" : "");
+  d.style.animationDuration = `${60 / bpm}s`; t.textContent = `${bpm} 心跳/分`;
+}
+
+function updateUI() {
+  byId("totalMoney").textContent = `$${state.totalMoney.toLocaleString()}`;
+  byId("currentMoney").textContent = `$${state.currentMoney.toLocaleString()}`;
+  byId("roundDisplay").textContent = `第 ${state.round} 回合 / ${TOTAL_ROUNDS}`;
+  byId("progressFill").style.width = `${(state.round - 1) / TOTAL_ROUNDS * 100}%`;
+  byId("pumpLabel").textContent = `${state.pumps} / 128`;
+  const b = byId("accountBadge");
+  if (state.round < ACCOUNT_SWITCH) { b.className = "badge retire"; b.textContent = "退休帳戶"; }
+  else { b.className = "badge bonus"; b.textContent = "獎金帳戶"; }
+  byId("btnCollect").textContent = state.pumps > 0 ? `收手兌現 $${state.currentMoney.toLocaleString()}` : "收手兌現";
+  const bp = byId("btnPump");
+  bp.textContent = state.inputMode === "autoTarget" ? `自動至 ${state.autoTarget}` : state.inputMode === "hold" ? "按住連續打氣" : "打氣 +$100";
+  updateMarketUI();
+}
+
+function setBtns(disabled) { byId("btnPump").disabled = disabled; byId("btnCollect").disabled = disabled; }
+
+function schedulePush() {
+  const delay = PUSH_BASE_MS + (Math.random() * 2 - 1) * PUSH_JITTER_MS;
+  pushIntervalId = setTimeout(() => { showPush(pushMessages[Math.floor(Math.random() * pushMessages.length)]); schedulePush(); }, delay);
+}
+function startPush() { clearTimeout(pushIntervalId); schedulePush(); }
+
+function showPush(msg) {
+  pushActiveType = msg.type;
+  const el = byId("pushNotif");
+  byId("pushText").textContent = msg.text;
+  el.className = "push " + (msg.type === "loss" ? "loss" : "");
+  el.classList.add("show"); playPushTone(msg.type);
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(() => { el.classList.remove("show"); setTimeout(() => pushActiveType = null, 500); }, 4000);
+}
+
+function rand() { marketSeed = (marketSeed * 1664525 + 1013904223) % 4294967296; return marketSeed / 4294967296; }
+function mockSnap() { marketTick++; const drift = Math.sin(marketTick / 3) * 4 + (rand() - 0.5) * 2, price = Math.min(140, Math.max(80, 100 + drift * 3)), chg = Math.max(-4.5, Math.min(4.5, drift)), players = Math.floor(300 + Math.abs(Math.sin(marketTick / 4)) * 2500 + rand() * 200), dist = []; let remain = players; for (let i = 0; i < 8; i++) { const start = i * 16, end = i * 16 + 15, w = (8 - i) + Math.abs(Math.sin((marketTick + i) / 4)), est = i === 7 ? remain : Math.max(10, Math.floor((w / 42) * players + rand() * 60)), p = Math.min(remain, est); remain -= p; const bias = 0.06 + i * 0.05 + Math.abs(Math.cos((marketTick + i) / 5)) * 0.05, bur = Math.min(p, Math.floor(p * bias)); dist.push({ bandStart: start, bandEnd: end, players: p, bursts: bur }); } return { timestamp: new Date().toISOString(), priceIndex: price, priceChangePct1m: chg, activePlayers: players, distribution: dist }; }
+async function fetchMarketSnapshot() { if (MARKET_API_URL) { try { const r = await fetch(MARKET_API_URL, { cache: "no-store" }); if (r.ok) return await r.json(); } catch (_) {} } return mockSnap(); }
+function pos(pumps, dist) { if (!dist || !dist.length) return { percentile: 0, bandLabel: "0-15", nearbyBurstRate: 0, burstCountAtCurrentBand: 0 }; let sel = dist[0], cum = 0, total = dist.reduce((s, b) => s + b.players, 0) || 1; dist.forEach(b => { if (pumps >= b.bandStart && pumps <= b.bandEnd) sel = b; if (pumps > b.bandEnd) cum += b.players; }); return { percentile: Math.min(99.9, Math.max(0, cum / total * 100)), bandLabel: `${sel.bandStart}-${sel.bandEnd}`, nearbyBurstRate: sel.players ? sel.bursts / sel.players : 0, burstCountAtCurrentBand: sel.bursts }; }
+async function refreshMarket() { latestMarketSnapshot = await fetchMarketSnapshot(); updateMarketUI(); }
+function startMarket() { clearInterval(marketIntervalId); refreshMarket(); marketIntervalId = setInterval(refreshMarket, 5000); }
+function updateMarketUI() { if (!latestMarketSnapshot) return; const p = pos(state.pumps, latestMarketSnapshot.distribution), chg = latestMarketSnapshot.priceChangePct1m, ce = byId("marketChange"); byId("marketPrice").textContent = latestMarketSnapshot.priceIndex.toFixed(1); ce.textContent = `${chg >= 0 ? "+" : ""}${chg.toFixed(2)}%`; ce.style.color = chg >= 0 ? "var(--gold)" : "var(--danger)"; byId("marketPlayers").textContent = latestMarketSnapshot.activePlayers.toLocaleString(); byId("marketBurstBand").textContent = p.burstCountAtCurrentBand.toLocaleString(); byId("marketBandLabel").textContent = p.bandLabel; byId("marketPercentile").textContent = `${p.percentile.toFixed(1)}%`; byId("marketNearbyRisk").textContent = `附近爆球率 ${(p.nearbyBurstRate * 100).toFixed(1)}%`; }
+
+function analyze() {
+  const cs = dataLog.filter(d => d.event === "collect"), bs = dataLog.filter(d => d.event === "burst");
+  const avg = cs.length ? cs.reduce((s, d) => s + d.pump_number, 0) / cs.length : 0;
+  const popRat = []; bs.forEach(b => { const n = dataLog.find(d => d.round === b.round + 1 && (d.event === "collect" || d.event === "burst")); if (n && b.pump_number > 0) popRat.push(n.pump_number / b.pump_number); }); popRat.sort((a, b) => a - b);
+  const ppr = popRat.length ? popRat[Math.floor(popRat.length / 2)] : 1;
+  const lats = bs.filter(d => d.pop_latency_ms).map(d => d.pop_latency_ms).sort((a, b) => a - b);
+  const latMedian = lats.length ? lats[Math.floor(lats.length / 2)] : 999999;
+  const rs = dataLog.filter(d => (d.event === "collect" || d.event === "burst") && d.account_type === "retire"),
+        bs2 = dataLog.filter(d => (d.event === "collect" || d.event === "burst") && d.account_type === "bonus"),
+        ar = rs.length ? rs.reduce((s, d) => s + d.pump_number, 0) / rs.length : 0,
+        ab = bs2.length ? bs2.reduce((s, d) => s + d.pump_number, 0) / bs2.length : 0,
+        shift = ar > 0 ? ab / ar - 1 : 0;
+  const allPumps = dataLog.filter(d => d.event === "pump" && !d.synthetic);
+  const herdRatio = allPumps.length ? allPumps.filter(d => d.push_active).length / allPumps.length : 0;
+  let type;
+  if (ppr > 1.3 && latMedian < 1500) type = "emotional";
+  else if (avg < 35 && bs.length > 8) type = "anxious";
+  else if (Math.abs(shift) < 0.15 && bs.length < 8) type = "rational";
+  else type = "herding";
+  const synthTotal = dataLog.filter(d => d.synthetic).length;
+  const synthRatio = allPumps.length ? (synthTotal / (allPumps.length + synthTotal)) : 0;
+  return { totalMoney: state.totalMoney, avgPumps: avg.toFixed(1), popCount: bs.length, shiftIndex: `${shift >= 0 ? "+" : ""}${shift.toFixed(2)}`, type, herdRatio: herdRatio.toFixed(2), synthRatio: synthRatio.toFixed(2) };
+}
+
+function render(a) {
+  byId("finalScore").textContent = `$${a.totalMoney.toLocaleString()}`;
+  byId("statAvgPumps").textContent = a.avgPumps;
+  byId("statPopCount").textContent = `${a.popCount} 次`;
+  byId("statShift").textContent = a.shiftIndex;
+  const p = personalities[a.type];
+  byId("personCard").style.borderTop = `3px solid ${p.color}`;
+  byId("personName").textContent = p.name; byId("personName").style.color = p.color;
+  byId("personDesc").textContent = p.desc; byId("personTip").textContent = p.tip;
+  if (parseFloat(a.synthRatio) > 0.3) byId("personDesc").textContent += ` ⚠ 注意：本次有 ${Math.round(parseFloat(a.synthRatio) * 100)}% 的打氣由自動模式完成，行為分析可信度降低。`;
+}
+
+function endGame() { stopAuto(); stopHold(); clearTimeout(pushIntervalId); clearInterval(marketIntervalId); clearTimeout(heartbeatTimer); showScreen("screen-result"); render(analyze()); }
+
+function downloadCSV() {
+  const h = ["round","pump_number","account_type","event","timestamp","click_interval_ms","first_pump_latency_ms","push_active","round_earned","burst_at","pop_latency_ms","synthetic"],
+        rows = dataLog.map(d => h.map(k => d[k] !== undefined ? d[k] : "").join(",")),
+        csv = [h.join(","), ...rows].join("\n"), blob = new Blob([csv], { type: "text/csv;charset=utf-8;" }),
+        url = URL.createObjectURL(blob), a = document.createElement("a");
+  a.href = url; a.download = `balloon_data_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
+}
+
+function restartGame() { clearTimeout(pushIntervalId); clearInterval(marketIntervalId); clearTimeout(heartbeatTimer); stopAuto(); stopHold(); showScreen("screen-intro"); }
+
+function startGame() {
+  initAudio(); dataLog = [];
+  state.round = 1; state.pumps = 0; state.burstAt = randomBurst();
+  state.totalMoney = 0; state.currentMoney = 0; state.totalPops = 0;
+  state.locked = false; state.popLatencyStart = 0; state.lastPumpTime = 0;
+  state.roundStartTime = Date.now(); state.firstPumpThisRound = true;
+  showScreen("screen-game"); setInputMode(state.inputMode);
+  byId("autoTargetInput").value = String(state.autoTarget);
+  resetBalloon(); updateUI(); setBtns(false); startPush(); startMarket();
+  currentBPM = 60; updateBPM(0);
+}
+
+byId("pwInput").addEventListener("keydown", e => { if (e.key === "Enter") checkPassword(); });
+</script>
+</body>
+</html>
