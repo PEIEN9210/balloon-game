@@ -455,7 +455,6 @@ function endGame() {
   showScreen("screen-result");
   render(analyze());
 }
-function endGame() { stopAuto(); stopHold(); clearTimeout(pushIntervalId); clearInterval(marketIntervalId); clearTimeout(heartbeatTimer); showScreen("screen-result"); render(analyze()); }
 
 function sendDataToSheet(dataLog) {
   fetch("https://script.google.com/macros/s/AKfycbyjAvKmx2IOzZxmmAn9F4oY2tgjEq7VFCg8dNAbX-tXkcS3jGl6pkreWpNz3ULq9UAfvA/exec", {
