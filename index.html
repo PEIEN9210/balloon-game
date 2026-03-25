@@ -444,6 +444,15 @@ function render(a) {
 
 function endGame() { stopAuto(); stopHold(); clearTimeout(pushIntervalId); clearInterval(marketIntervalId); clearTimeout(heartbeatTimer); showScreen("screen-result"); render(analyze()); }
 
+function sendDataToSheet(dataLog) {
+  fetch("https://script.google.com/macros/s/AKfycbyjAvKmx2IOzZxmmAn9F4oY2tgjEq7VFCg8dNAbX-tXkcS3jGl6pkreWpNz3ULq9UAfvA/exec", {
+    method: "POST",
+    body: JSON.stringify({
+      user_id: USER_ID,
+      session_data: dataLog
+    })
+  }).catch(err => console.log("upload error", err));
+}
 function downloadCSV() {
   const h = ["round","pump_number","account_type","event","timestamp","click_interval_ms","first_pump_latency_ms","push_active","round_earned","burst_at","pop_latency_ms","synthetic"],
         rows = dataLog.map(d => h.map(k => d[k] !== undefined ? d[k] : "").join(",")),
