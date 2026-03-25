@@ -442,6 +442,19 @@ function render(a) {
   if (parseFloat(a.synthRatio) > 0.3) byId("personDesc").textContent += ` ⚠ 注意：本次有 ${Math.round(parseFloat(a.synthRatio) * 100)}% 的打氣由自動模式完成，行為分析可信度降低。`;
 }
 
+function endGame() {
+
+  // ⭐ 這行是關鍵（新增）
+  sendDataToSheet(dataLog);
+
+  stopAuto();
+  stopHold();
+  clearTimeout(pushIntervalId);
+  clearInterval(marketIntervalId);
+  clearTimeout(heartbeatTimer);
+  showScreen("screen-result");
+  render(analyze());
+}
 function endGame() { stopAuto(); stopHold(); clearTimeout(pushIntervalId); clearInterval(marketIntervalId); clearTimeout(heartbeatTimer); showScreen("screen-result"); render(analyze()); }
 
 function sendDataToSheet(dataLog) {
