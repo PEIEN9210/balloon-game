@@ -243,6 +243,7 @@
 const TOTAL_ROUNDS = 20, ACCOUNT_SWITCH = 11, MARKET_API_URL = "";
 const PUSH_BASE_MS = 15000, PUSH_JITTER_MS = 5000;
 
+const USER_ID = crypto.randomUUID();
 let state = {
   round: 1, pumps: 0, burstAt: 0, totalMoney: 0, currentMoney: 0,
   totalPops: 0, locked: false, popLatencyStart: 0, lastPumpTime: 0,
