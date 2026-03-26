@@ -161,7 +161,17 @@
 </style>
 </head>
 <body>
-  <div id="screen-intro" class="screen active">
+  <div id="screen-password" class="screen active">
+    <div class="title">密碼驗證</div>
+    <div class="panel">
+      <div class="label">請輸入進入密碼</div>
+      <input id="pwInput" type="password" style="width:100%;padding:12px;margin:10px 0;background:var(--surface2);border:1px solid var(--border);color:var(--text)" />
+      <div id="pwError" class="mono" style="color:var(--danger);min-height:18px;margin-bottom:10px"></div>
+      <button class="btn" style="width:100%" onclick="checkPassword()">登入遊戲</button>
+    </div>
+  </div>
+
+  <div id="screen-intro" class="screen">
     <div class="title">氣球風險挑戰</div>
     <p class="sub">每按一次打氣可增加 +$100，但氣球隨時可能爆掉。爆掉就失去本回合金額，見好就收才能把錢帶走。</p>
     <button class="btn" onclick="startGame()">開始遊戲</button>
@@ -265,6 +275,7 @@ const personalities = {
 
 const byId = id => document.getElementById(id);
 function showScreen(id) { document.querySelectorAll(".screen").forEach(s => s.classList.remove("active")); const el = byId(id); if (el) el.classList.add("active"); window.scrollTo(0, 0); }
+function checkPassword() { const i = byId("pwInput"), e = byId("pwError"), ok = atob("d2FoYWhhMDAwNw=="); if (i.value === ok) { e.textContent = ""; showScreen("screen-intro"); } else { e.textContent = "密碼錯誤，請再試一次"; i.value = ""; } }
 function initAudio() { try { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === "suspended") audioCtx.resume(); } catch (_) {} }
 function hbGain(r) { const b = state.audioHeartbeatBase; let g = b; if (r >= 0.8) g = b * state.audioHeartbeatDangerBoost; else if (r >= 0.65) g = b * 1.4; return Math.min(g * state.audioMaster, 0.85); }
 function playHeartbeat(bpm, r = state.pumps / 128) { if (!audioCtx) return; clearTimeout(heartbeatTimer); const interval = 60000 / bpm, level = hbGain(r); (function beat() { if (!audioCtx) return; const n = audioCtx.currentTime, o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.connect(g); g.connect(audioCtx.destination); o.frequency.setValueAtTime(82, n); o.frequency.exponentialRampToValueAtTime(40, n + 0.08); g.gain.setValueAtTime(level, n); g.gain.exponentialRampToValueAtTime(0.001, n + 0.13); o.start(n); o.stop(n + 0.13); heartbeatTimer = setTimeout(beat, interval); })(); }
@@ -446,7 +457,7 @@ function endGame() {
 }
 
 function sendDataToSheet(dataLog) {
-  fetch("https://script.google.com/macros/s/AKfycbyjAvKmx2IOzZxmmAn9F4oY2tgjEq7VFCg8dNAbX-tXkcS3jGl6pkreWpNz3ULq9UAfvA/exec", {
+  fetch("https://script.google.com/macros/s/AKfycbzt35IGJO-dakon3Qu3JWDgK4woS0g4TszZaqKu2lRABNMzKgh4Gdie3aPvRP8Uq3Burg/exec", {
     method: "POST",
     body: JSON.stringify({
       user_id: USER_ID,
@@ -476,6 +487,9 @@ function startGame() {
   currentBPM = 60; updateBPM(0);
 }
 
+byId("pwInput").addEventListener("keydown", e => { if (e.key === "Enter") checkPassword(); });
 </script>
 </body>
 </html>
+
+
