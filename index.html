@@ -455,7 +455,7 @@ function sendDataToSheet(dataLog) {
   }).catch(err => console.log("upload error", err));
 }
 function downloadCSV() {
-  const h = ["round","pump_number","account_type","event","timestamp","click_interval_ms","first_pump_latency_ms","push_active","round_earned","burst_at","pop_latency_ms","synthetic"],
+  const h = ["user_id","round","pump_number","account_type","event","timestamp","click_interval_ms","first_pump_latency_ms","push_active","round_earned","burst_at","pop_latency_ms","synthetic"],
         rows = dataLog.map(d => h.map(k => d[k] !== undefined ? d[k] : "").join(",")),
         csv = [h.join(","), ...rows].join("\n"), blob = new Blob([csv], { type: "text/csv;charset=utf-8;" }),
         url = URL.createObjectURL(blob), a = document.createElement("a");
