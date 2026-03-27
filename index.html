@@ -295,7 +295,7 @@ function pumpOnce(synthetic) {
 
 function doBurst(now) {
   state.locked = true; stopAuto(); stopHold(); state.totalPops++; playPop();
-  dataLog.push({ round: state.round, pump_number: state.pumps, account_type: accountType(), event: "burst", timestamp: now, click_interval_ms: null, push_active: pushActiveType, round_earned: 0, burst_at: state.burstAt });
+  dataLog.push({ user_id: USER_ID, round: state.round, pump_number: state.pumps, account_type: accountType(), event: "burst", timestamp: now, click_interval_ms: null, first_pump_latency_ms: null, push_active: pushActiveType, round_earned: 0, burst_at: state.burstAt, pop_latency_ms: null, synthetic: false });
   byId("explosionSub").textContent = `第 ${state.pumps} 次爆球，損失 $${state.currentMoney.toLocaleString()}`;
   const c = byId("balloonContainer"), ex = byId("explosion");
   c.classList.remove("floating","shaking"); c.classList.add("popping"); ex.classList.add("show");
