@@ -288,7 +288,7 @@ function pumpOnce(synthetic) {
   const firstPumpLatency = state.firstPumpThisRound ? (now - state.roundStartTime) : null;
   state.firstPumpThisRound = false; state.lastPumpTime = now;
   state.pumps++; state.currentMoney += 100;
-  dataLog.push({ round: state.round, pump_number: state.pumps, account_type: accountType(), event: "pump", timestamp: now, click_interval_ms: ci, first_pump_latency_ms: firstPumpLatency, push_active: pushActiveType, synthetic: Boolean(synthetic) });
+  dataLog.push({ user_id: USER_ID, round: state.round, pump_number: state.pumps, account_type: accountType(), event: "pump", timestamp: now, click_interval_ms: ci, first_pump_latency_ms: firstPumpLatency, push_active: pushActiveType, round_earned: undefined, burst_at: state.burstAt, pop_latency_ms: undefined, synthetic: Boolean(synthetic) });
   if (state.pumps >= state.burstAt) { doBurst(now); return; }
   updateBalloon(); updateUI(); updateBPM(state.pumps);
 }
