@@ -307,7 +307,7 @@ function collect() {
   if (state.locked || state.pumps === 0) return;
   stopAuto(); stopHold(); state.locked = true;
   const earned = state.currentMoney; state.totalMoney += earned; playCollect();
-  dataLog.push({ round: state.round, pump_number: state.pumps, account_type: accountType(), event: "collect", timestamp: Date.now(), click_interval_ms: null, push_active: pushActiveType, round_earned: earned, burst_at: state.burstAt });
+  dataLog.push({ user_id: USER_ID, round: state.round, pump_number: state.pumps, account_type: accountType(), event: "collect", timestamp: Date.now(), click_interval_ms: null, first_pump_latency_ms: null, push_active: pushActiveType, round_earned: earned, burst_at: state.burstAt, pop_latency_ms: null, synthetic: false });
   setBtns(true); setTimeout(() => state.round < TOTAL_ROUNDS ? nextRound() : endGame(), 900);
 }
 
