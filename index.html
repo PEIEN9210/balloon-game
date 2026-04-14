@@ -25,7 +25,7 @@
   body { font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; font-size: 18px; background: var(--bg); color: var(--text); overflow-x: hidden; }
   .screen { display: none; min-height: 100vh; }
   .screen.active { display: flex; }
-  #screen-password, #screen-intro, #screen-tutorial, #screen-result { flex-direction: column; align-items: center; justify-content: center; padding: 24px; }
+  #screen-intro, #screen-tutorial, #screen-result { flex-direction: column; align-items: center; justify-content: center; padding: 24px; }
   .panel { width: 100%; max-width: 460px; border: 1px solid var(--border); background: var(--surface); padding: 20px; }
 
   .title {
@@ -233,7 +233,7 @@
       radial-gradient(ellipse at 85% 85%, rgba(245,195,0,.06) 0%, transparent 55%);
     z-index: 0;
   }
-  #screen-game, #screen-intro, #screen-result, #screen-password, #screen-tutorial { position: relative; z-index: 1; }
+  #screen-game, #screen-intro, #screen-result, #screen-tutorial { position: relative; z-index: 1; }
 
   @media (max-width: 960px) { .mode-wrap { grid-template-columns: 1fr; } .market-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 680px) {
@@ -247,19 +247,8 @@
 </head>
 <body>
 
-<!-- ══ 密碼畫面 ══ -->
-<div id="screen-password" class="screen active">
-  <div class="title">密碼驗證</div>
-  <div class="panel">
-    <div class="label">請輸入進入密碼</div>
-    <input id="pwInput" type="password" style="width:100%;padding:12px;margin:10px 0;background:var(--surface2);border:1px solid var(--border);color:var(--text)" />
-    <div id="pwError" class="mono" style="color:var(--danger);min-height:18px;margin-bottom:10px"></div>
-    <button class="btn" style="width:100%" onclick="checkPassword()">登入遊戲</button>
-  </div>
-</div>
-
 <!-- ══ 介紹畫面 ══ -->
-<div id="screen-intro" class="screen">
+<div id="screen-intro" class="screen active">
   <div class="title">氣球風險挑戰</div>
   <p class="sub">每按一次打氣可增加 +$100，但氣球隨時可能爆掉。爆掉就失去本回合金額，見好就收才能把錢帶走。</p>
   <button class="btn" onclick="goToTutorial()">開始遊戲</button>
@@ -608,11 +597,7 @@ function showScreen(id) {
   document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
   const el = byId(id); if (el) el.classList.add("active"); window.scrollTo(0, 0);
 }
-function checkPassword() {
-  const i = byId("pwInput"), e = byId("pwError"), ok = atob("d2FoYWhhMDAwNw==");
-  if (i.value === ok) { e.textContent = ""; showScreen("screen-intro"); }
-  else { e.textContent = "密碼錯誤，請再試一次"; i.value = ""; }
-}
+
 
 // ══════════════════════════════════════════════
 // 音效
@@ -902,7 +887,7 @@ function updateUI() {
   updateMarketUI();
 }
 
-byId("pwInput").addEventListener("keydown", e => { if (e.key === "Enter") checkPassword(); });
+
 </script>
 </body>
 </html>
