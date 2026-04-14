@@ -6,19 +6,16 @@
 <title>氣球風險遊戲</title>
 <style>
   :root {
-    /* ── Yellow × Purple palette ── */
     --bg: #0d0a18;
     --surface: #13102a;
     --surface2: #1c1838;
     --border: #3a2e6a;
     --text: #f5f0ff;
     --muted: #9080c0;
-    --primary: #a855f7;     /* vivid purple — main action */
-    --accent: #f5c300;      /* golden yellow — accent / positive */
-    --danger: #e040fb;      /* magenta-purple — danger */
-    --gold: #ffe033;        /* bright yellow — money / highlight */
-
-    /* map to legacy var names used throughout */
+    --primary: #a855f7;
+    --accent: #f5c300;
+    --danger: #e040fb;
+    --gold: #ffe033;
     --blue: var(--primary);
     --orange: var(--accent);
     --red: var(--danger);
@@ -28,7 +25,7 @@
   body { font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; font-size: 18px; background: var(--bg); color: var(--text); overflow-x: hidden; }
   .screen { display: none; min-height: 100vh; }
   .screen.active { display: flex; }
-  #screen-password, #screen-intro, #screen-result { flex-direction: column; align-items: center; justify-content: center; padding: 24px; }
+  #screen-password, #screen-intro, #screen-tutorial, #screen-result { flex-direction: column; align-items: center; justify-content: center; padding: 24px; }
   .panel { width: 100%; max-width: 460px; border: 1px solid var(--border); background: var(--surface); padding: 20px; }
 
   .title {
@@ -45,10 +42,109 @@
     box-shadow: 0 0 12px rgba(168,85,247,.35);
   }
   .btn:hover { background: #9333ea; border-color: #9333ea; box-shadow: 0 0 20px rgba(168,85,247,.6); }
+  .btn:disabled { opacity: .35; cursor: not-allowed; box-shadow: none; }
   .btn.alt { background: transparent; border-color: var(--gold); color: var(--gold); box-shadow: none; }
   .btn.alt:hover { background: rgba(255,224,51,.1); box-shadow: 0 0 12px rgba(255,224,51,.3); }
   .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
+  /* ── NPC Tutorial Screen ── */
+  #screen-tutorial { gap: 0; }
+
+  .tutorial-wrap {
+    width: 100%; max-width: 560px;
+    display: flex; flex-direction: column; gap: 20px;
+  }
+
+  /* progress dots */
+  .tut-dots {
+    display: flex; justify-content: center; gap: 10px; margin-bottom: 4px;
+  }
+  .tut-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--border); transition: background .3s, transform .3s;
+  }
+  .tut-dot.active { background: var(--accent); transform: scale(1.3); }
+  .tut-dot.done   { background: var(--primary); }
+
+  /* NPC bubble */
+  .npc-row {
+    display: flex; align-items: flex-end; gap: 14px;
+  }
+  .npc-avatar {
+    flex-shrink: 0; width: 64px; height: 64px; border-radius: 50%;
+    border: 2px solid var(--primary);
+    background: var(--surface2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px;
+    box-shadow: 0 0 16px rgba(168,85,247,.4);
+    animation: npc-float 3s ease-in-out infinite;
+  }
+  @keyframes npc-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+
+  .npc-bubble {
+    flex: 1;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 2px 16px 16px 16px;
+    padding: 14px 18px;
+    position: relative;
+    min-height: 64px;
+  }
+  .npc-bubble::before {
+    content: ""; position: absolute; left: -10px; bottom: 18px;
+    border: 5px solid transparent;
+    border-right-color: var(--border);
+  }
+  .npc-bubble::after {
+    content: ""; position: absolute; left: -8px; bottom: 19px;
+    border: 4px solid transparent;
+    border-right-color: var(--surface2);
+  }
+  .npc-name { font-size: 12px; color: var(--primary); font-weight: 700; letter-spacing: .08em; margin-bottom: 6px; }
+  .npc-text { color: var(--text); line-height: 1.65; font-size: 16px; }
+  .npc-text span.hi { color: var(--accent); font-weight: 700; }
+
+  /* tutorial task card */
+  .tut-task {
+    border: 1px solid var(--border); background: var(--surface);
+    padding: 16px 20px;
+  }
+  .tut-task-label { font-size: 13px; color: var(--muted); letter-spacing: .08em; margin-bottom: 8px; }
+  .tut-task-desc  { font-size: 16px; color: var(--text); line-height: 1.6; margin-bottom: 14px; }
+
+  /* mini balloon for tutorial */
+  .tut-balloon-wrap {
+    display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 10px 0;
+  }
+  .tut-balloon-wrap svg { filter: drop-shadow(0 0 14px #a855f7); }
+  .tut-bar { width: 180px; height: 6px; background: var(--border); border-radius: 2px; }
+  .tut-bar-fill { height: 100%; width: 0%; background: var(--primary); border-radius: 2px; transition: width .2s, background .3s; }
+  .tut-count { font-size: 13px; color: var(--muted); font-family: ui-monospace, monospace; }
+
+  .tut-actions { display: flex; gap: 10px; }
+  .tut-actions button { flex: 1; padding: 12px; font-size: 16px; font-weight: 700; cursor: pointer; border: 1px solid var(--primary); background: var(--primary); color: #fff; transition: .2s; }
+  .tut-actions button:hover { background: #9333ea; }
+  .tut-actions button.collect-btn { background: transparent; color: var(--gold); border-color: var(--gold); }
+  .tut-actions button.collect-btn:hover { background: rgba(255,224,51,.1); }
+  .tut-actions button:disabled { opacity: .35; cursor: not-allowed; }
+
+  .tut-feedback {
+    min-height: 28px; font-size: 15px; font-weight: 700;
+    color: var(--accent); text-align: center;
+    opacity: 0; transition: opacity .3s;
+  }
+  .tut-feedback.show { opacity: 1; }
+  .tut-feedback.danger { color: var(--danger); }
+
+  .tut-next-btn {
+    width: 100%; padding: 14px; font-size: 17px; font-weight: 700;
+    border: 1px solid var(--primary); background: var(--primary); color: #fff;
+    cursor: pointer; transition: .2s; opacity: 0; pointer-events: none;
+    box-shadow: 0 0 12px rgba(168,85,247,.35);
+  }
+  .tut-next-btn.ready { opacity: 1; pointer-events: auto; }
+  .tut-next-btn:hover { background: #9333ea; }
+
+  /* ── Game screen ── */
   #screen-game { flex-direction: column; align-items: center; padding: 16px 12px 28px; overflow: visible; }
   .topbar, .progress-wrap, .pump-wrap, .mode-wrap, .market-grid, .arena, .actions { width: 100%; max-width: 980px; }
   .topbar { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 10px; }
@@ -59,14 +155,12 @@
   .badge { margin-top: 6px; display: inline-block; padding: 4px 10px; font-size: 15px; font-weight: 700; }
   .badge.retire { color: var(--accent); background: rgba(245,195,0,.12); border: 1px solid rgba(245,195,0,.4); }
   .badge.bonus  { color: var(--gold);   background: rgba(255,224,51,.12); border: 1px solid rgba(255,224,51,.4); }
-
   .progress { height: 4px; background: var(--border); }
   .progress-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--primary)); transition: width .3s; }
   .pump-wrap { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
   .pump-meter { flex: 1; height: 7px; background: var(--border); }
   .pump-fill { height: 100%; width: 0; background: var(--primary); }
   .pump-text { min-width: 100px; color: var(--muted); text-align: right; font-size: 16px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-
   .mode-wrap { margin-top: 10px; display: grid; grid-template-columns: 1fr auto; gap: 10px; }
   .mode-tabs, .auto-target { border: 1px solid var(--border); background: var(--surface); padding: 8px; }
   .mode-tabs { display: flex; gap: 8px; }
@@ -74,14 +168,11 @@
   .mode-tab.active { color: var(--accent); border-color: rgba(245,195,0,.5); background: rgba(245,195,0,.1); }
   .auto-target { display: flex; align-items: center; gap: 8px; }
   .auto-target input { width: 90px; padding: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-size: 16px; }
-
-  /* ── Market grid ── */
   .market-grid { margin-top: 10px; border: 1px solid var(--border); background: var(--surface); padding: 10px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
   .market-card { border: 1px solid var(--border); background: var(--surface2); padding: 10px; min-height: 72px; }
   .market-key { color: var(--muted); font-size: 13px; }
   .market-val { margin-top: 3px; font-size: 22px; font-weight: 800; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text); }
   .market-sub { margin-top: 3px; color: var(--muted); font-size: 15px; }
-
   .arena { min-height: clamp(330px, 43vh, 520px); display: flex; align-items: center; justify-content: center; position: relative; overflow: visible; }
   .balloon { display: flex; flex-direction: column; align-items: center; transition: transform .15s; }
   #balloonSvg { width: min(48vw, 260px); height: auto; overflow: visible; filter: drop-shadow(0 0 22px #a855f7); }
@@ -89,7 +180,6 @@
   .boom { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; opacity: 0; transition: opacity .2s; }
   .boom.show { opacity: 1; }
   .boom strong { font-size: 48px; color: var(--danger); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; text-shadow: 0 0 20px rgba(224,64,251,.7); }
-
   .actions { max-width: 620px; display: flex; gap: 12px; }
   .actions button { flex: 1; padding: 16px; font-size: 20px; font-weight: 700; cursor: pointer; transition: .2s; }
   #btnPump  { background: var(--primary); color: #fff; border: 1px solid var(--primary); box-shadow: 0 0 14px rgba(168,85,247,.4); }
@@ -97,41 +187,36 @@
   #btnCollect { background: transparent; color: var(--gold); border: 1px solid var(--gold); }
   #btnCollect:hover:not(:disabled) { background: rgba(255,224,51,.1); box-shadow: 0 0 14px rgba(255,224,51,.3); }
   #btnPump:disabled, #btnCollect:disabled { opacity: .35; cursor: not-allowed; box-shadow: none; }
-
-  /* ── Push notification — ENLARGED ── */
   .push {
     position: fixed; top: 72px; right: 12px; max-width: 420px;
-    border: 1px solid var(--border);
-    border-left: 5px solid var(--accent);
-    background: var(--surface2);
-    padding: 16px 20px;
+    border: 1px solid var(--border); border-left: 5px solid var(--accent);
+    background: var(--surface2); padding: 16px 20px;
     opacity: 0; transform: translateX(16px); transition: .3s; pointer-events: none;
-    box-shadow: 0 4px 28px rgba(168,85,247,.25);
-    border-radius: 2px;
+    box-shadow: 0 4px 28px rgba(168,85,247,.25); border-radius: 2px;
   }
-  .push .label {
-    font-size: 14px; color: var(--muted); margin-bottom: 8px;
-    letter-spacing: .06em; text-transform: uppercase;
-  }
-  .push #pushText {
-    font-size: 24px; font-weight: 800; line-height: 1.45; color: var(--accent);
-    text-shadow: 0 0 12px rgba(245,195,0,.35);
-  }
+  .push .label { font-size: 14px; color: var(--muted); margin-bottom: 8px; letter-spacing: .06em; text-transform: uppercase; }
+  .push #pushText { font-size: 24px; font-weight: 800; line-height: 1.45; color: var(--accent); text-shadow: 0 0 12px rgba(245,195,0,.35); }
   .push.loss { border-left-color: var(--danger); box-shadow: 0 4px 28px rgba(224,64,251,.3); }
   .push.loss #pushText { color: var(--danger); text-shadow: 0 0 12px rgba(224,64,251,.4); }
   .push.show { opacity: 1; transform: none; }
-
   .bpm { position: fixed; right: 10px; bottom: 10px; color: var(--muted); display: flex; align-items: center; gap: 6px; font-size: 15px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); animation: beat 1s infinite; }
   .dot.mid  { background: var(--accent); }
   .dot.fast { background: var(--danger); }
 
+  /* ── Result screen ── */
   .score { font-size: clamp(48px, 11vw, 90px); color: var(--gold); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; margin: 8px 0; text-shadow: 0 0 20px rgba(255,224,51,.5); }
   .stats { width: 100%; max-width: 560px; margin: 16px 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
   .stat { border: 1px solid var(--border); background: var(--surface); padding: 10px; text-align: center; }
   .stat .v { font-size: 26px; font-weight: 800; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--accent); }
   .person { width: 100%; max-width: 560px; border: 1px solid var(--border); background: var(--surface); padding: 16px; }
   .person h3 { font-size: 34px; margin: 6px 0 10px; }
+
+  /* extra result stats */
+  .stats-extra { width: 100%; max-width: 560px; margin: 0 0 16px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .stat-extra { border: 1px solid var(--border); background: var(--surface2); padding: 10px; text-align: center; }
+  .stat-extra .v { font-size: 20px; font-weight: 800; font-family: ui-monospace, monospace; color: var(--primary); }
+  .stat-extra .label { font-size: 13px; }
 
   @keyframes beat { 0%,100% { transform: scale(1); } 50% { transform: scale(1.6); opacity: .45; } }
   @keyframes flo  { 0%,100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-10px) rotate(1deg); } }
@@ -141,7 +226,6 @@
   .shaking  { animation: shak .18s infinite !important; }
   .popping  { animation: pop .25s forwards !important; }
 
-  /* subtle purple-gold ambient glow */
   body::before {
     content: ""; position: fixed; inset: 0; pointer-events: none;
     background:
@@ -149,7 +233,7 @@
       radial-gradient(ellipse at 85% 85%, rgba(245,195,0,.06) 0%, transparent 55%);
     z-index: 0;
   }
-  #screen-game, #screen-intro, #screen-result, #screen-password { position: relative; z-index: 1; }
+  #screen-game, #screen-intro, #screen-result, #screen-password, #screen-tutorial { position: relative; z-index: 1; }
 
   @media (max-width: 960px) { .mode-wrap { grid-template-columns: 1fr; } .market-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 680px) {
@@ -157,83 +241,152 @@
     .actions, .stats, .market-grid { grid-template-columns: 1fr; display: grid; }
     .push { max-width: calc(100vw - 24px); right: 12px; }
     .push #pushText { font-size: 20px; }
+    .stats-extra { grid-template-columns: 1fr; }
   }
 </style>
 </head>
 <body>
-  <div id="screen-intro" class="screen active">
-    <div class="title">氣球風險挑戰</div>
-    <p class="sub">每按一次打氣可增加 +$100，但氣球隨時可能爆掉。爆掉就失去本回合金額，見好就收才能把錢帶走。</p>
-    <button class="btn" onclick="startGame()">開始遊戲</button>
-  </div>
 
-  <div id="screen-game" class="screen">
-    <div class="topbar">
-      <div><div class="label">累積總金額</div><div class="value money" id="totalMoney">$0</div></div>
-      <div class="center"><div class="label" id="roundDisplay">第 1 回合 / 20</div><div class="badge retire" id="accountBadge">退休帳戶</div></div>
-      <div class="right"><div class="label">本回合金額</div><div class="value" id="currentMoney">$0</div></div>
+<!-- ══ 密碼畫面 ══ -->
+<div id="screen-password" class="screen active">
+  <div class="title">密碼驗證</div>
+  <div class="panel">
+    <div class="label">請輸入進入密碼</div>
+    <input id="pwInput" type="password" style="width:100%;padding:12px;margin:10px 0;background:var(--surface2);border:1px solid var(--border);color:var(--text)" />
+    <div id="pwError" class="mono" style="color:var(--danger);min-height:18px;margin-bottom:10px"></div>
+    <button class="btn" style="width:100%" onclick="checkPassword()">登入遊戲</button>
+  </div>
+</div>
+
+<!-- ══ 介紹畫面 ══ -->
+<div id="screen-intro" class="screen">
+  <div class="title">氣球風險挑戰</div>
+  <p class="sub">每按一次打氣可增加 +$100，但氣球隨時可能爆掉。爆掉就失去本回合金額，見好就收才能把錢帶走。</p>
+  <button class="btn" onclick="goToTutorial()">開始遊戲</button>
+</div>
+
+<!-- ══ NPC 教學畫面 ══ -->
+<div id="screen-tutorial" class="screen">
+  <div class="tutorial-wrap">
+
+    <div class="tut-dots">
+      <div class="tut-dot active" id="dot0"></div>
+      <div class="tut-dot" id="dot1"></div>
+      <div class="tut-dot" id="dot2"></div>
     </div>
-    <div class="progress-wrap"><div class="progress"><div class="progress-fill" id="progressFill"></div></div></div>
-    <div class="pump-wrap"><div class="pump-meter"><div class="pump-fill" id="pumpFill"></div></div><div class="pump-text" id="pumpLabel">0 / 128</div></div>
-    <div class="mode-wrap">
-      <div class="mode-tabs">
-        <button class="mode-tab active" id="modeManual" onclick="setInputMode('manual')">手動</button>
-        <button class="mode-tab" id="modeHold"   onclick="setInputMode('hold')">按住連打</button>
-        <button class="mode-tab" id="modeAuto"   onclick="setInputMode('autoTarget')">自動目標</button>
+
+    <!-- NPC 對話框 -->
+    <div class="npc-row">
+      <div class="npc-avatar" id="npcAvatar">🧑‍🔬</div>
+      <div class="npc-bubble">
+        <div class="npc-name">風險顧問 · 小風</div>
+        <div class="npc-text" id="npcText">嗨！我是小風，你的專屬風險顧問。<br>這個遊戲共 <span class="hi">20 回合</span>，每次打氣 +$100，但氣球隨時可能爆掉——爆掉就失去本回合全部金額。<br>見好就收，才是高手！</div>
       </div>
-      <div class="auto-target"><span class="label">目標值</span><input id="autoTargetInput" type="number" min="1" max="127" value="32" onchange="updateAutoTarget(this.value)" /></div>
     </div>
-    <div class="market-grid">
-      <div class="market-card"><div class="market-key">價格指數</div><div class="market-val" id="marketPrice">100.0</div><div class="market-sub" id="marketChange">+0.00%</div></div>
-      <div class="market-card"><div class="market-key">線上玩家</div><div class="market-val" id="marketPlayers">0</div><div class="market-sub">即時</div></div>
-      <div class="market-card"><div class="market-key">當前區間爆球數</div><div class="market-val" id="marketBurstBand">0</div><div class="market-sub" id="marketBandLabel">0-15</div></div>
-      <div class="market-card"><div class="market-key">你的位置</div><div class="market-val" id="marketPercentile">0%</div><div class="market-sub" id="marketNearbyRisk">附近爆球率 0%</div></div>
-    </div>
-    <div class="arena">
-      <div class="balloon floating" id="balloonContainer">
-        <svg id="balloonSvg" width="220" height="260" viewBox="0 0 220 260">
-          <ellipse id="balloonBody" cx="110" cy="105" rx="52" ry="62" fill="#a855f7" opacity=".92"></ellipse>
+
+    <!-- 任務卡 -->
+    <div class="tut-task" id="tutTask">
+      <div class="tut-task-label">🎯 新手任務 1 / 3</div>
+      <div class="tut-task-desc" id="tutTaskDesc">先試試看——按下「打氣」至少 <strong>3 次</strong>，感受一下氣球膨脹的感覺。</div>
+
+      <!-- 小氣球預覽 -->
+      <div class="tut-balloon-wrap" id="tutBalloonWrap">
+        <svg id="tutBalloonSvg" width="100" height="120" viewBox="0 0 220 260">
+          <ellipse id="tutBody" cx="110" cy="105" rx="52" ry="62" fill="#a855f7" opacity=".92"></ellipse>
           <ellipse cx="88" cy="84" rx="14" ry="10" fill="rgba(255,255,255,.25)" transform="rotate(-20,88,84)"></ellipse>
-          <polygon id="balloonTip" points="105,168 110,177 115,168" fill="#a855f7"></polygon>
+          <polygon id="tutTip" points="105,168 110,177 115,168" fill="#a855f7"></polygon>
         </svg>
-        <div class="string"></div>
+        <div class="tut-bar"><div class="tut-bar-fill" id="tutBarFill"></div></div>
+        <div class="tut-count" id="tutCount">0 次打氣</div>
       </div>
-      <div class="boom" id="explosion"><strong>爆炸</strong><div class="mono" id="explosionSub" style="color:var(--muted);margin-top:6px">本回合失敗</div></div>
-    </div>
-    <div class="actions">
-      <button id="btnPump" onclick="onPumpClick(event)" onpointerdown="handlePumpPointerDown(event)" onpointerup="handlePumpPointerUp()" onpointerleave="handlePumpPointerUp()" onpointercancel="handlePumpPointerUp()">打氣 +$100</button>
-      <button id="btnCollect" onclick="collect()">收手兌現</button>
-    </div>
-    <div class="push" id="pushNotif"><div class="label">市場訊號</div><div id="pushText"></div></div>
-    <div class="bpm"><div class="dot" id="bpmDot"></div><span id="bpmText">60 心跳/分</span></div>
-  </div>
 
-  <div id="screen-result" class="screen">
-    <div class="label">遊戲結束</div>
-    <div class="score" id="finalScore">$0</div>
-    <div class="sub" style="margin-bottom:0">共 20 回合</div>
-    <div class="stats">
-      <div class="stat"><div class="v" id="statAvgPumps">0</div><div class="label">平均打氣次數</div></div>
-      <div class="stat"><div class="v" id="statPopCount">0</div><div class="label">爆球回合</div></div>
-      <div class="stat"><div class="v" id="statShift">0</div><div class="label">風格偏移</div></div>
+      <div class="tut-actions">
+        <button id="tutPumpBtn" onclick="tutPump()">打氣 +$100</button>
+        <button id="tutCollectBtn" class="collect-btn" onclick="tutCollect()" disabled>收手兌現</button>
+      </div>
+      <div class="tut-feedback" id="tutFeedback"></div>
     </div>
-    <div class="person" id="personCard">
-      <div class="label">決策風格</div>
-      <h3 id="personName">理性型</h3>
-      <div id="personDesc" style="color:var(--muted);line-height:1.7">在不確定情境下能維持穩定策略。</div>
-      <div style="margin-top:8px"><strong>建議：</strong> <span id="personTip">維持固定的風險上限。</span></div>
-    </div>
-    <div style="width:100%;max-width:560px;margin-top:14px">
-      <button class="btn" style="width:100%;margin-bottom:8px" onclick="downloadCSV()">下載 CSV</button>
-      <button class="btn alt" style="width:100%" onclick="restartGame()">重新開始</button>
-    </div>
+
+    <button class="tut-next-btn" id="tutNextBtn" onclick="tutNext()">下一步 →</button>
   </div>
+</div>
+
+<!-- ══ 遊戲畫面 ══ -->
+<div id="screen-game" class="screen">
+  <div class="topbar">
+    <div><div class="label">累積總金額</div><div class="value money" id="totalMoney">$0</div></div>
+    <div class="center"><div class="label" id="roundDisplay">第 1 回合 / 20</div><div class="badge retire" id="accountBadge">退休帳戶</div></div>
+    <div class="right"><div class="label">本回合金額</div><div class="value" id="currentMoney">$0</div></div>
+  </div>
+  <div class="progress-wrap"><div class="progress"><div class="progress-fill" id="progressFill"></div></div></div>
+  <div class="pump-wrap"><div class="pump-meter"><div class="pump-fill" id="pumpFill"></div></div><div class="pump-text" id="pumpLabel">0 / 128</div></div>
+  <div class="mode-wrap">
+    <div class="mode-tabs">
+      <button class="mode-tab active" id="modeManual" onclick="setInputMode('manual')">手動</button>
+      <button class="mode-tab" id="modeHold" onclick="setInputMode('hold')">按住連打</button>
+      <button class="mode-tab" id="modeAuto" onclick="setInputMode('autoTarget')">自動目標</button>
+    </div>
+    <div class="auto-target"><span class="label">目標值</span><input id="autoTargetInput" type="number" min="1" max="127" value="32" onchange="updateAutoTarget(this.value)" /></div>
+  </div>
+  <div class="market-grid">
+    <div class="market-card"><div class="market-key">價格指數</div><div class="market-val" id="marketPrice">100.0</div><div class="market-sub" id="marketChange">+0.00%</div></div>
+    <div class="market-card"><div class="market-key">線上玩家</div><div class="market-val" id="marketPlayers">0</div><div class="market-sub">即時</div></div>
+    <div class="market-card"><div class="market-key">當前區間爆球數</div><div class="market-val" id="marketBurstBand">0</div><div class="market-sub" id="marketBandLabel">0-15</div></div>
+    <div class="market-card"><div class="market-key">你的位置</div><div class="market-val" id="marketPercentile">0%</div><div class="market-sub" id="marketNearbyRisk">附近爆球率 0%</div></div>
+  </div>
+  <div class="arena">
+    <div class="balloon floating" id="balloonContainer">
+      <svg id="balloonSvg" width="220" height="260" viewBox="0 0 220 260">
+        <ellipse id="balloonBody" cx="110" cy="105" rx="52" ry="62" fill="#a855f7" opacity=".92"></ellipse>
+        <ellipse cx="88" cy="84" rx="14" ry="10" fill="rgba(255,255,255,.25)" transform="rotate(-20,88,84)"></ellipse>
+        <polygon id="balloonTip" points="105,168 110,177 115,168" fill="#a855f7"></polygon>
+      </svg>
+      <div class="string"></div>
+    </div>
+    <div class="boom" id="explosion"><strong>爆炸</strong><div class="mono" id="explosionSub" style="color:var(--muted);margin-top:6px">本回合失敗</div></div>
+  </div>
+  <div class="actions">
+    <button id="btnPump" onclick="onPumpClick(event)" onpointerdown="handlePumpPointerDown(event)" onpointerup="handlePumpPointerUp()" onpointerleave="handlePumpPointerUp()" onpointercancel="handlePumpPointerUp()">打氣 +$100</button>
+    <button id="btnCollect" onclick="collect()">收手兌現</button>
+  </div>
+  <div class="push" id="pushNotif"><div class="label">市場訊號</div><div id="pushText"></div></div>
+  <div class="bpm"><div class="dot" id="bpmDot"></div><span id="bpmText">60 心跳/分</span></div>
+</div>
+
+<!-- ══ 結果畫面 ══ -->
+<div id="screen-result" class="screen">
+  <div class="label">遊戲結束</div>
+  <div class="score" id="finalScore">$0</div>
+  <div class="sub" style="margin-bottom:0">共 20 回合</div>
+  <div class="stats">
+    <div class="stat"><div class="v" id="statAvgPumps">0</div><div class="label">平均打氣次數</div></div>
+    <div class="stat"><div class="v" id="statPopCount">0</div><div class="label">爆球回合</div></div>
+    <div class="stat"><div class="v" id="statShift">0</div><div class="label">風格偏移</div></div>
+  </div>
+  <div class="stats-extra">
+    <div class="stat-extra"><div class="v" id="statHerdRatio">0%</div><div class="label">推播影響率</div></div>
+    <div class="stat-extra"><div class="v" id="statPostBurst">0</div><div class="label">爆後行為指數</div></div>
+  </div>
+  <div class="person" id="personCard">
+    <div class="label">決策風格</div>
+    <h3 id="personName">理性型</h3>
+    <div id="personDesc" style="color:var(--muted);line-height:1.7">在不確定情境下能維持穩定策略。</div>
+    <div style="margin-top:8px"><strong>建議：</strong> <span id="personTip">維持固定的風險上限。</span></div>
+  </div>
+  <div style="width:100%;max-width:560px;margin-top:14px">
+    <button class="btn" style="width:100%;margin-bottom:8px" onclick="downloadCSV()">下載 CSV</button>
+    <button class="btn alt" style="width:100%" onclick="restartGame()">重新開始</button>
+  </div>
+</div>
 
 <script>
+// ══════════════════════════════════════════════
+// 常數與初始狀態
+// ══════════════════════════════════════════════
 const TOTAL_ROUNDS = 20, ACCOUNT_SWITCH = 11, MARKET_API_URL = "";
 const PUSH_BASE_MS = 15000, PUSH_JITTER_MS = 5000;
-
 const USER_ID = crypto.randomUUID();
+
 let state = {
   round: 1, pumps: 0, burstAt: 0, totalMoney: 0, currentMoney: 0,
   totalPops: 0, locked: false, popLatencyStart: 0, lastPumpTime: 0,
@@ -256,21 +409,224 @@ const pushMessages = [
   { type: "gain", text: "玩家 F 提早離場，拿到 $3,200" }
 ];
 
+// ══════════════════════════════════════════════
+// 更新後的人格定義（增加推播影響率與爆後指數說明）
+// ══════════════════════════════════════════════
 const personalities = {
-  emotional: { name: "情緒型", desc: "在虧損後會快速提高風險。",       tip: "打氣前先設定不可超過的上限。", color: "#e040fb" },
-  anxious:   { name: "焦慮型", desc: "常為了避免回撤而提早收手。",     tip: "目標值可逐步小幅提高。",       color: "#a855f7" },
-  rational:  { name: "理性型", desc: "每回合策略維持穩定且一致。",     tip: "持續使用固定規則。",           color: "#ffe033" },
-  herding:   { name: "從眾型", desc: "容易受外部訊號影響決策。",       tip: "把訊號當參考，不要當指令。",   color: "#f5c300" }
+  emotional: {
+    name: "情緒型",
+    desc: "你在爆球後傾向於大幅提高下一回合的打氣次數，決策容易受情緒波動影響，屬於高風險承擔者。",
+    tip: "建議在每回合開始前設定固定上限，避免在情緒高峰時超出預算。",
+    color: "#e040fb"
+  },
+  anxious: {
+    name: "焦慮型",
+    desc: "你傾向於在打氣次數很少時就收手，對潛在損失非常敏感，寧可放棄收益也要規避風險。",
+    tip: "可以嘗試設定一個「最低打氣目標」，逐步訓練對不確定性的耐受度。",
+    color: "#a855f7"
+  },
+  rational: {
+    name: "理性型",
+    desc: "你的每回合策略高度穩定，不論帳戶類型或外部訊號，都能維持一致的決策邏輯，爆球率適中。",
+    tip: "持續使用固定規則是你的優勢，可進一步嘗試根據回合進度動態調整目標值。",
+    color: "#ffe033"
+  },
+  herding: {
+    name: "從眾型",
+    desc: "你的打氣決策容易受到市場訊號（推播通知）影響，當看到他人獲利或虧損時，行為明顯改變。",
+    tip: "練習在看到訊號後停頓 3 秒再決策，把外部資訊當參考而非指令。",
+    color: "#f5c300"
+  }
 };
 
+// ══════════════════════════════════════════════
+// NPC 教學系統
+// ══════════════════════════════════════════════
+let tutStep = 0;
+let tutPumps = 0;
+let tutBurstAt = Math.floor(Math.random() * 10) + 8; // 8~17次隨機爆破，用於第2步
+let tutCollected = false;
+let tutBurst = false;
+let tutFirstPumpTime = null;
+let tutStartTime = null;
+
+const tutSteps = [
+  {
+    dot: 0,
+    npcText: `嗨！我是小風，你的專屬風險顧問。<br>這個遊戲共 <span class="hi">20 回合</span>，每次打氣 +$100，但氣球隨時可能爆掉——爆掉就失去本回合全部金額。<br>見好就收，才是高手！`,
+    taskLabel: "🎯 新手任務 1 / 3",
+    taskDesc: `先試試看——按下「打氣」至少 <strong>3 次</strong>，感受一下氣球膨脹的感覺。`,
+    showBalloon: true,
+    showCollect: false,
+    completeCondition: () => tutPumps >= 3,
+    nextText: "了解了，繼續 →"
+  },
+  {
+    dot: 1,
+    npcText: `很好！現在換你體驗「見好就收」的感覺。<br>打幾次之後，按下 <span class="hi">收手兌現</span> 把錢帶走——記得，貪心可能讓你什麼都沒有！`,
+    taskLabel: "🎯 新手任務 2 / 3",
+    taskDesc: `打氣至少 <strong>2 次</strong>，然後按「收手兌現」完成本回合。`,
+    showBalloon: true,
+    showCollect: true,
+    completeCondition: () => tutCollected,
+    nextText: "我學會了，繼續 →"
+  },
+  {
+    dot: 2,
+    npcText: `最後，你會看到市場上出現「推播訊號」，告訴你其他玩家的狀況。<br>這些訊號是真實的嗎？會影響你的判斷嗎？<span class="hi">這正是我們想研究的！</span><br>準備好了嗎？正式遊戲開始！`,
+    taskLabel: "✅ 教學完成",
+    taskDesc: `你已掌握基本規則。接下來是 20 回合的正式遊戲，<strong>你的每個決策都會被記錄與分析</strong>，請盡力發揮！`,
+    showBalloon: false,
+    showCollect: false,
+    completeCondition: () => true,
+    nextText: "🚀 開始正式遊戲"
+  }
+];
+
+function goToTutorial() {
+  tutStep = 0; tutPumps = 0; tutCollected = false; tutBurst = false;
+  tutFirstPumpTime = null; tutStartTime = Date.now();
+  tutBurstAt = Math.floor(Math.random() * 10) + 8;
+  renderTutStep();
+  showScreen("screen-tutorial");
+}
+
+function renderTutStep() {
+  const s = tutSteps[tutStep];
+
+  // dots
+  for (let i = 0; i < 3; i++) {
+    const d = byId("dot" + i);
+    d.className = "tut-dot" + (i < tutStep ? " done" : i === tutStep ? " active" : "");
+  }
+
+  // NPC
+  byId("npcText").innerHTML = s.npcText;
+
+  // task
+  byId("tutTask").querySelector(".tut-task-label").textContent = s.taskLabel;
+  byId("tutTaskDesc").innerHTML = s.taskDesc;
+  byId("tutBalloonWrap").style.display = s.showBalloon ? "flex" : "none";
+  byId("tutCollectBtn").disabled = !s.showCollect;
+
+  // reset balloon
+  tutPumps = 0; tutCollected = false; tutBurst = false;
+  updateTutBalloon();
+  byId("tutFeedback").className = "tut-feedback";
+  byId("tutFeedback").textContent = "";
+  byId("tutNextBtn").className = "tut-next-btn" + (s.completeCondition() ? " ready" : "");
+  byId("tutNextBtn").textContent = s.nextText;
+  byId("tutPumpBtn").disabled = false;
+}
+
+function tutPump() {
+  if (tutBurst) return;
+  if (!tutFirstPumpTime) tutFirstPumpTime = Date.now() - tutStartTime;
+  tutPumps++;
+  updateTutBalloon();
+
+  const s = tutSteps[tutStep];
+  // 第2步才有爆破風險
+  if (tutStep === 1 && tutPumps >= tutBurstAt) {
+    tutBurst = true;
+    byId("tutPumpBtn").disabled = true;
+    byId("tutCollectBtn").disabled = true;
+    showTutFeedback("💥 氣球爆了！本回合失去所有金額。這就是風險！", true);
+    byId("tutNextBtn").className = "tut-next-btn ready";
+    return;
+  }
+
+  if (tutStep === 1 && tutPumps >= 2) {
+    byId("tutCollectBtn").disabled = false;
+  }
+
+  if (s.completeCondition()) {
+    byId("tutNextBtn").className = "tut-next-btn ready";
+  }
+  if (tutStep === 0 && tutPumps === 3) {
+    showTutFeedback("✅ 很好！你感受到了嗎？繼續按可以賺更多，但也更危險。");
+    byId("tutNextBtn").className = "tut-next-btn ready";
+  }
+}
+
+function tutCollect() {
+  if (tutBurst || tutPumps < 2) return;
+  tutCollected = true;
+  byId("tutPumpBtn").disabled = true;
+  byId("tutCollectBtn").disabled = true;
+  showTutFeedback(`✅ 收手成功！你帶走了 $${tutPumps * 100} 元。明智的決策！`);
+  byId("tutNextBtn").className = "tut-next-btn ready";
+}
+
+function showTutFeedback(msg, isDanger = false) {
+  const el = byId("tutFeedback");
+  el.textContent = msg;
+  el.className = "tut-feedback show" + (isDanger ? " danger" : "");
+}
+
+function tutNext() {
+  const s = tutSteps[tutStep];
+  if (!s.completeCondition() && !tutCollected && !tutBurst) return;
+
+  if (tutStep < tutSteps.length - 1) {
+    tutStep++;
+    renderTutStep();
+  } else {
+    // 記錄教學行為到 dataLog
+    dataLog.push({
+      user_id: USER_ID, round: 0, pump_number: null,
+      account_type: "tutorial", event: "tutorial_complete",
+      timestamp: Date.now(),
+      click_interval_ms: null,
+      first_pump_latency_ms: tutFirstPumpTime,
+      push_active: null, round_earned: null, burst_at: null,
+      pop_latency_ms: null, synthetic: false
+    });
+    startGame();
+  }
+}
+
+function updateTutBalloon() {
+  const r = Math.min(tutPumps / 20, 1);
+  const rx = 52 + r * 30, ry = 62 + r * 35, y = 168 + (ry - 62);
+  const body = byId("tutBody"), tip = byId("tutTip");
+  body.setAttribute("rx", rx); body.setAttribute("ry", ry);
+  tip.setAttribute("points", `${105 + r * 5},${y} 110,${y + 9} ${115 - r * 5},${y}`);
+  let col = "#a855f7";
+  if (r >= 0.65) col = "#e040fb"; else if (r >= 0.35) col = "#f5c300";
+  body.setAttribute("fill", col); tip.setAttribute("fill", col);
+  byId("tutBarFill").style.width = `${r * 100}%`;
+  byId("tutBarFill").style.background = col;
+  byId("tutCount").textContent = `${tutPumps} 次打氣`;
+}
+
+// ══════════════════════════════════════════════
+// 畫面切換 / 密碼
+// ══════════════════════════════════════════════
 const byId = id => document.getElementById(id);
-function showScreen(id) { document.querySelectorAll(".screen").forEach(s => s.classList.remove("active")); const el = byId(id); if (el) el.classList.add("active"); window.scrollTo(0, 0); }
+function showScreen(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  const el = byId(id); if (el) el.classList.add("active"); window.scrollTo(0, 0);
+}
+function checkPassword() {
+  const i = byId("pwInput"), e = byId("pwError"), ok = atob("d2FoYWhhMDAwNw==");
+  if (i.value === ok) { e.textContent = ""; showScreen("screen-intro"); }
+  else { e.textContent = "密碼錯誤，請再試一次"; i.value = ""; }
+}
+
+// ══════════════════════════════════════════════
+// 音效
+// ══════════════════════════════════════════════
 function initAudio() { try { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === "suspended") audioCtx.resume(); } catch (_) {} }
 function hbGain(r) { const b = state.audioHeartbeatBase; let g = b; if (r >= 0.8) g = b * state.audioHeartbeatDangerBoost; else if (r >= 0.65) g = b * 1.4; return Math.min(g * state.audioMaster, 0.85); }
 function playHeartbeat(bpm, r = state.pumps / 128) { if (!audioCtx) return; clearTimeout(heartbeatTimer); const interval = 60000 / bpm, level = hbGain(r); (function beat() { if (!audioCtx) return; const n = audioCtx.currentTime, o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.connect(g); g.connect(audioCtx.destination); o.frequency.setValueAtTime(82, n); o.frequency.exponentialRampToValueAtTime(40, n + 0.08); g.gain.setValueAtTime(level, n); g.gain.exponentialRampToValueAtTime(0.001, n + 0.13); o.start(n); o.stop(n + 0.13); heartbeatTimer = setTimeout(beat, interval); })(); }
 function playPushTone(type) { if (!audioCtx) return; const nowMs = Date.now(); if (nowMs - lastPushToneAt < 4000) return; lastPushToneAt = nowMs; const now = audioCtx.currentTime, tones = type === "loss" ? [430, 320] : [520, 700]; tones.forEach((f, i) => { const o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.type = type === "loss" ? "triangle" : "sine"; o.frequency.setValueAtTime(f, now); o.connect(g); g.connect(audioCtx.destination); const t = now + i * 0.07; g.gain.setValueAtTime(0.12 * state.audioMaster, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.17); o.start(t); o.stop(t + 0.2); }); }
 function playPop() { if (!audioCtx) return; const n = audioCtx.currentTime, s = Math.floor(audioCtx.sampleRate * 0.14), b = audioCtx.createBuffer(1, s, audioCtx.sampleRate), d = b.getChannelData(0); for (let i = 0; i < s; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (s * 0.1)); const src = audioCtx.createBufferSource(), g = audioCtx.createGain(); src.buffer = b; g.gain.setValueAtTime(Math.min(1.4 * state.audioMaster, 1.4), n); g.gain.exponentialRampToValueAtTime(0.001, n + 0.18); src.connect(g); g.connect(audioCtx.destination); src.start(n); }
 function playCollect() { if (!audioCtx) return; const n = audioCtx.currentTime; [523, 659, 784].forEach((f, i) => { const o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.frequency.value = f; o.type = "sine"; o.connect(g); g.connect(audioCtx.destination); const t = n + i * 0.07; g.gain.setValueAtTime(0.15 * state.audioMaster, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.2); o.start(t); o.stop(t + 0.22); }); }
+
+// ══════════════════════════════════════════════
+// 遊戲核心邏輯
+// ══════════════════════════════════════════════
 function randomBurst() { return Math.floor(Math.random() * 128) + 1; }
 function accountType() { return state.round < ACCOUNT_SWITCH ? "retire" : "bonus"; }
 function setInputMode(m) { state.inputMode = m; stopAuto(); stopHold(); ["modeManual","modeHold","modeAuto"].forEach(id => byId(id).classList.remove("active")); byId(m === "manual" ? "modeManual" : m === "hold" ? "modeHold" : "modeAuto").classList.add("active"); byId("autoTargetInput").disabled = m !== "autoTarget"; updateUI(); }
@@ -319,13 +675,190 @@ function nextRound() {
   resetBalloon(); updateUI(); updateBPM(0); setBtns(false);
 }
 
+// ══════════════════════════════════════════════
+// 更新後的人格分析邏輯（新增推播影響率、爆後行為指數）
+// ══════════════════════════════════════════════
+function analyze() {
+  const cs = dataLog.filter(d => d.event === "collect" && d.round > 0);
+  const bs = dataLog.filter(d => d.event === "burst" && d.round > 0);
+  const allRounds = dataLog.filter(d => (d.event === "collect" || d.event === "burst") && d.round > 0);
+
+  // 平均打氣（只取 collect 回合，標準 BART 計算）
+  const avg = cs.length ? cs.reduce((s, d) => s + d.pump_number, 0) / cs.length : 0;
+
+  // 帳戶偏移（退休 vs 獎金）
+  const rs  = allRounds.filter(d => d.account_type === "retire");
+  const bs2 = allRounds.filter(d => d.account_type === "bonus");
+  const ar  = rs.length  ? rs.reduce((s, d) => s + d.pump_number, 0) / rs.length : 0;
+  const ab  = bs2.length ? bs2.reduce((s, d) => s + d.pump_number, 0) / bs2.length : 0;
+  const shift = ar > 0 ? ab / ar - 1 : 0;
+
+  // 推播影響率：打氣時有推播 / 總手動打氣
+  const manualPumps = dataLog.filter(d => d.event === "pump" && !d.synthetic && d.round > 0);
+  const herdRatio = manualPumps.length
+    ? manualPumps.filter(d => d.push_active).length / manualPumps.length
+    : 0;
+
+  // 爆後行為指數：爆球後下一回合打氣變化率（新增）
+  const sortedRounds = [...allRounds].sort((a, b) => a.round - b.round);
+  const postBurstChanges = [];
+  for (let i = 1; i < sortedRounds.length; i++) {
+    const prev = sortedRounds[i - 1], curr = sortedRounds[i];
+    if (prev.event === "burst" && prev.pump_number > 0) {
+      postBurstChanges.push(curr.pump_number / prev.pump_number - 1);
+    }
+  }
+  const postBurstIndex = postBurstChanges.length
+    ? postBurstChanges.reduce((s, v) => s + v, 0) / postBurstChanges.length
+    : 0;
+
+  // ── 人格判斷（四維評分，取最高分）──────────────
+  const scores = {
+    emotional : 0,
+    anxious   : 0,
+    rational  : 0,
+    herding   : 0
+  };
+
+  // 情緒型：爆球後打更多 + 爆球率高
+  if (postBurstIndex > 0.5)  scores.emotional += 2;
+  if (postBurstIndex > 0.2)  scores.emotional += 1;
+  if (bs.length / Math.max(allRounds.length, 1) > 0.4) scores.emotional += 2;
+
+  // 焦慮型：平均打氣少 + 爆球率低
+  if (avg < 20)  scores.anxious += 3;
+  else if (avg < 30) scores.anxious += 1;
+  if (bs.length / Math.max(allRounds.length, 1) < 0.2) scores.anxious += 1;
+
+  // 理性型：帳戶偏移小 + 爆球率適中
+  if (Math.abs(shift) < 0.15) scores.rational += 2;
+  if (Math.abs(shift) < 0.25) scores.rational += 1;
+  const bRate = bs.length / Math.max(allRounds.length, 1);
+  if (bRate >= 0.15 && bRate <= 0.45) scores.rational += 1;
+
+  // 從眾型：推播影響率高
+  if (herdRatio > 0.3)  scores.herding += 3;
+  else if (herdRatio > 0.2) scores.herding += 1;
+  if (Math.abs(shift) > 0.3) scores.herding += 1; // 帳戶間差異大也是訊號敏感
+
+  // 取最高分人格
+  let type = Object.entries(scores).sort((a, b) => b[1] - a[1])[0][0];
+
+  // 邊界情況：分數都很低時給理性型
+  if (Math.max(...Object.values(scores)) < 2) type = "rational";
+
+  const synthTotal = dataLog.filter(d => d.synthetic).length;
+  const synthRatio = manualPumps.length ? synthTotal / (manualPumps.length + synthTotal) : 0;
+
+  return {
+    totalMoney: state.totalMoney,
+    avgPumps: avg.toFixed(1),
+    popCount: bs.length,
+    shiftIndex: `${shift >= 0 ? "+" : ""}${shift.toFixed(2)}`,
+    type,
+    herdRatio: (herdRatio * 100).toFixed(0),
+    postBurstIndex: postBurstIndex.toFixed(2),
+    synthRatio: synthRatio.toFixed(2)
+  };
+}
+
+function render(a) {
+  byId("finalScore").textContent = `$${a.totalMoney.toLocaleString()}`;
+  byId("statAvgPumps").textContent = a.avgPumps;
+  byId("statPopCount").textContent = `${a.popCount} 次`;
+  byId("statShift").textContent = a.shiftIndex;
+  byId("statHerdRatio").textContent = `${a.herdRatio}%`;
+  byId("statPostBurst").textContent = a.postBurstIndex;
+  const p = personalities[a.type];
+  byId("personCard").style.borderTop = `3px solid ${p.color}`;
+  byId("personName").textContent = p.name; byId("personName").style.color = p.color;
+  byId("personDesc").textContent = p.desc; byId("personTip").textContent = p.tip;
+  if (parseFloat(a.synthRatio) > 0.3) {
+    byId("personDesc").textContent += ` ⚠ 注意：本次有 ${Math.round(parseFloat(a.synthRatio) * 100)}% 的打氣由自動模式完成，行為分析可信度降低。`;
+  }
+}
+
+// ══════════════════════════════════════════════
+// 遊戲流程
+// ══════════════════════════════════════════════
+function endGame() {
+  sendDataToSheet(dataLog);
+  stopAuto(); stopHold();
+  clearTimeout(pushIntervalId); clearInterval(marketIntervalId); clearTimeout(heartbeatTimer);
+  showScreen("screen-result");
+  render(analyze());
+}
+
+function sendDataToSheet(dataLog) {
+  fetch("https://script.google.com/macros/s/AKfycbzc12DuYeWQiO3xCvgv34xvQ6GHys8GkQFWGmDyGZmCWWGvzn-W6kV-g3in-LeK5tWKyg/exec", {
+    method: "POST",
+    mode: "no-cors",
+    body: JSON.stringify({ user_id: USER_ID, session_data: dataLog })
+  }).catch(err => console.log("upload error", err));
+}
+
+function downloadCSV() {
+  const h = ["user_id","round","pump_number","account_type","event","timestamp","click_interval_ms","first_pump_latency_ms","push_active","round_earned","burst_at","pop_latency_ms","synthetic"],
+        rows = dataLog.map(d => h.map(k => d[k] !== undefined ? d[k] : "").join(",")),
+        csv = [h.join(","), ...rows].join("\n"),
+        blob = new Blob([csv], { type: "text/csv;charset=utf-8;" }),
+        url = URL.createObjectURL(blob), a = document.createElement("a");
+  a.href = url; a.download = `balloon_data_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
+}
+
+function restartGame() {
+  clearTimeout(pushIntervalId); clearInterval(marketIntervalId); clearTimeout(heartbeatTimer);
+  stopAuto(); stopHold(); showScreen("screen-intro");
+}
+
+function startGame() {
+  initAudio();
+  // dataLog 保留 tutorial_complete 事件，只清除空的
+  dataLog = dataLog.filter(d => d.event === "tutorial_complete");
+  state.round = 1; state.pumps = 0; state.burstAt = randomBurst();
+  state.totalMoney = 0; state.currentMoney = 0; state.totalPops = 0;
+  state.locked = false; state.popLatencyStart = 0; state.lastPumpTime = 0;
+  state.roundStartTime = Date.now(); state.firstPumpThisRound = true;
+  showScreen("screen-game"); setInputMode(state.inputMode);
+  byId("autoTargetInput").value = String(state.autoTarget);
+  resetBalloon(); updateUI(); setBtns(false); startPush(); startMarket();
+  currentBPM = 60; updateBPM(0);
+}
+
+// ══════════════════════════════════════════════
+// UI 更新
+// ══════════════════════════════════════════════
+function setBtns(disabled) { byId("btnPump").disabled = disabled; byId("btnCollect").disabled = disabled; }
+
+function schedulePush() {
+  const delay = PUSH_BASE_MS + (Math.random() * 2 - 1) * PUSH_JITTER_MS;
+  pushIntervalId = setTimeout(() => { showPush(pushMessages[Math.floor(Math.random() * pushMessages.length)]); schedulePush(); }, delay);
+}
+function startPush() { clearTimeout(pushIntervalId); schedulePush(); }
+function showPush(msg) {
+  pushActiveType = msg.type;
+  const el = byId("pushNotif");
+  byId("pushText").textContent = msg.text;
+  el.className = "push " + (msg.type === "loss" ? "loss" : "");
+  el.classList.add("show"); playPushTone(msg.type);
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(() => { el.classList.remove("show"); setTimeout(() => pushActiveType = null, 500); }, 4000);
+}
+
+function rand() { marketSeed = (marketSeed * 1664525 + 1013904223) % 4294967296; return marketSeed / 4294967296; }
+function mockSnap() { marketTick++; const drift = Math.sin(marketTick / 3) * 4 + (rand() - 0.5) * 2, price = Math.min(140, Math.max(80, 100 + drift * 3)), chg = Math.max(-4.5, Math.min(4.5, drift)), players = Math.floor(300 + Math.abs(Math.sin(marketTick / 4)) * 2500 + rand() * 200), dist = []; let remain = players; for (let i = 0; i < 8; i++) { const start = i * 16, end = i * 16 + 15, w = (8 - i) + Math.abs(Math.sin((marketTick + i) / 4)), est = i === 7 ? remain : Math.max(10, Math.floor((w / 42) * players + rand() * 60)), p = Math.min(remain, est); remain -= p; const bias = 0.06 + i * 0.05 + Math.abs(Math.cos((marketTick + i) / 5)) * 0.05, bur = Math.min(p, Math.floor(p * bias)); dist.push({ bandStart: start, bandEnd: end, players: p, bursts: bur }); } return { timestamp: new Date().toISOString(), priceIndex: price, priceChangePct1m: chg, activePlayers: players, distribution: dist }; }
+async function fetchMarketSnapshot() { if (MARKET_API_URL) { try { const r = await fetch(MARKET_API_URL, { cache: "no-store" }); if (r.ok) return await r.json(); } catch (_) {} } return mockSnap(); }
+function pos(pumps, dist) { if (!dist || !dist.length) return { percentile: 0, bandLabel: "0-15", nearbyBurstRate: 0, burstCountAtCurrentBand: 0 }; let sel = dist[0], cum = 0, total = dist.reduce((s, b) => s + b.players, 0) || 1; dist.forEach(b => { if (pumps >= b.bandStart && pumps <= b.bandEnd) sel = b; if (pumps > b.bandEnd) cum += b.players; }); return { percentile: Math.min(99.9, Math.max(0, cum / total * 100)), bandLabel: `${sel.bandStart}-${sel.bandEnd}`, nearbyBurstRate: sel.players ? sel.bursts / sel.players : 0, burstCountAtCurrentBand: sel.bursts }; }
+async function refreshMarket() { latestMarketSnapshot = await fetchMarketSnapshot(); updateMarketUI(); }
+function startMarket() { clearInterval(marketIntervalId); refreshMarket(); marketIntervalId = setInterval(refreshMarket, 5000); }
+function updateMarketUI() { if (!latestMarketSnapshot) return; const p = pos(state.pumps, latestMarketSnapshot.distribution), chg = latestMarketSnapshot.priceChangePct1m, ce = byId("marketChange"); byId("marketPrice").textContent = latestMarketSnapshot.priceIndex.toFixed(1); ce.textContent = `${chg >= 0 ? "+" : ""}${chg.toFixed(2)}%`; ce.style.color = chg >= 0 ? "var(--gold)" : "var(--danger)"; byId("marketPlayers").textContent = latestMarketSnapshot.activePlayers.toLocaleString(); byId("marketBurstBand").textContent = p.burstCountAtCurrentBand.toLocaleString(); byId("marketBandLabel").textContent = p.bandLabel; byId("marketPercentile").textContent = `${p.percentile.toFixed(1)}%`; byId("marketNearbyRisk").textContent = `附近爆球率 ${(p.nearbyBurstRate * 100).toFixed(1)}%`; }
+
 function updateBalloon() {
   const r = state.pumps / 128, body = byId("balloonBody"), tip = byId("balloonTip"),
         svg = byId("balloonSvg"), c = byId("balloonContainer"),
         rx = 52 + r * 30, ry = 62 + r * 35, y = 168 + (ry - 62);
   body.setAttribute("rx", rx); body.setAttribute("ry", ry);
   tip.setAttribute("points", `${105 + r * 5},${y} 110,${y + 9} ${115 - r * 5},${y}`);
-  /* purple → amber → magenta colour ramp */
   let col = "#a855f7";
   if (r >= 0.65) col = "#e040fb"; else if (r >= 0.35) col = "#f5c300";
   body.setAttribute("fill", col); tip.setAttribute("fill", col);
@@ -369,114 +902,7 @@ function updateUI() {
   updateMarketUI();
 }
 
-function setBtns(disabled) { byId("btnPump").disabled = disabled; byId("btnCollect").disabled = disabled; }
-
-function schedulePush() {
-  const delay = PUSH_BASE_MS + (Math.random() * 2 - 1) * PUSH_JITTER_MS;
-  pushIntervalId = setTimeout(() => { showPush(pushMessages[Math.floor(Math.random() * pushMessages.length)]); schedulePush(); }, delay);
-}
-function startPush() { clearTimeout(pushIntervalId); schedulePush(); }
-
-function showPush(msg) {
-  pushActiveType = msg.type;
-  const el = byId("pushNotif");
-  byId("pushText").textContent = msg.text;
-  el.className = "push " + (msg.type === "loss" ? "loss" : "");
-  el.classList.add("show"); playPushTone(msg.type);
-  clearTimeout(pushTimer);
-  pushTimer = setTimeout(() => { el.classList.remove("show"); setTimeout(() => pushActiveType = null, 500); }, 4000);
-}
-
-function rand() { marketSeed = (marketSeed * 1664525 + 1013904223) % 4294967296; return marketSeed / 4294967296; }
-function mockSnap() { marketTick++; const drift = Math.sin(marketTick / 3) * 4 + (rand() - 0.5) * 2, price = Math.min(140, Math.max(80, 100 + drift * 3)), chg = Math.max(-4.5, Math.min(4.5, drift)), players = Math.floor(300 + Math.abs(Math.sin(marketTick / 4)) * 2500 + rand() * 200), dist = []; let remain = players; for (let i = 0; i < 8; i++) { const start = i * 16, end = i * 16 + 15, w = (8 - i) + Math.abs(Math.sin((marketTick + i) / 4)), est = i === 7 ? remain : Math.max(10, Math.floor((w / 42) * players + rand() * 60)), p = Math.min(remain, est); remain -= p; const bias = 0.06 + i * 0.05 + Math.abs(Math.cos((marketTick + i) / 5)) * 0.05, bur = Math.min(p, Math.floor(p * bias)); dist.push({ bandStart: start, bandEnd: end, players: p, bursts: bur }); } return { timestamp: new Date().toISOString(), priceIndex: price, priceChangePct1m: chg, activePlayers: players, distribution: dist }; }
-async function fetchMarketSnapshot() { if (MARKET_API_URL) { try { const r = await fetch(MARKET_API_URL, { cache: "no-store" }); if (r.ok) return await r.json(); } catch (_) {} } return mockSnap(); }
-function pos(pumps, dist) { if (!dist || !dist.length) return { percentile: 0, bandLabel: "0-15", nearbyBurstRate: 0, burstCountAtCurrentBand: 0 }; let sel = dist[0], cum = 0, total = dist.reduce((s, b) => s + b.players, 0) || 1; dist.forEach(b => { if (pumps >= b.bandStart && pumps <= b.bandEnd) sel = b; if (pumps > b.bandEnd) cum += b.players; }); return { percentile: Math.min(99.9, Math.max(0, cum / total * 100)), bandLabel: `${sel.bandStart}-${sel.bandEnd}`, nearbyBurstRate: sel.players ? sel.bursts / sel.players : 0, burstCountAtCurrentBand: sel.bursts }; }
-async function refreshMarket() { latestMarketSnapshot = await fetchMarketSnapshot(); updateMarketUI(); }
-function startMarket() { clearInterval(marketIntervalId); refreshMarket(); marketIntervalId = setInterval(refreshMarket, 5000); }
-function updateMarketUI() { if (!latestMarketSnapshot) return; const p = pos(state.pumps, latestMarketSnapshot.distribution), chg = latestMarketSnapshot.priceChangePct1m, ce = byId("marketChange"); byId("marketPrice").textContent = latestMarketSnapshot.priceIndex.toFixed(1); ce.textContent = `${chg >= 0 ? "+" : ""}${chg.toFixed(2)}%`; ce.style.color = chg >= 0 ? "var(--gold)" : "var(--danger)"; byId("marketPlayers").textContent = latestMarketSnapshot.activePlayers.toLocaleString(); byId("marketBurstBand").textContent = p.burstCountAtCurrentBand.toLocaleString(); byId("marketBandLabel").textContent = p.bandLabel; byId("marketPercentile").textContent = `${p.percentile.toFixed(1)}%`; byId("marketNearbyRisk").textContent = `附近爆球率 ${(p.nearbyBurstRate * 100).toFixed(1)}%`; }
-
-function analyze() {
-  const cs = dataLog.filter(d => d.event === "collect"), bs = dataLog.filter(d => d.event === "burst");
-  const avg = cs.length ? cs.reduce((s, d) => s + d.pump_number, 0) / cs.length : 0;
-  const popRat = []; bs.forEach(b => { const n = dataLog.find(d => d.round === b.round + 1 && (d.event === "collect" || d.event === "burst")); if (n && b.pump_number > 0) popRat.push(n.pump_number / b.pump_number); }); popRat.sort((a, b) => a - b);
-  const ppr = popRat.length ? popRat[Math.floor(popRat.length / 2)] : 1;
-  const lats = bs.filter(d => d.pop_latency_ms).map(d => d.pop_latency_ms).sort((a, b) => a - b);
-  const latMedian = lats.length ? lats[Math.floor(lats.length / 2)] : 999999;
-  const rs = dataLog.filter(d => (d.event === "collect" || d.event === "burst") && d.account_type === "retire"),
-        bs2 = dataLog.filter(d => (d.event === "collect" || d.event === "burst") && d.account_type === "bonus"),
-        ar = rs.length ? rs.reduce((s, d) => s + d.pump_number, 0) / rs.length : 0,
-        ab = bs2.length ? bs2.reduce((s, d) => s + d.pump_number, 0) / bs2.length : 0,
-        shift = ar > 0 ? ab / ar - 1 : 0;
-  const allPumps = dataLog.filter(d => d.event === "pump" && !d.synthetic);
-  const herdRatio = allPumps.length ? allPumps.filter(d => d.push_active).length / allPumps.length : 0;
-  let type;
-  if (ppr > 1.3 && latMedian < 1500) type = "emotional";
-  else if (avg < 35 && bs.length > 8) type = "anxious";
-  else if (Math.abs(shift) < 0.15 && bs.length < 8) type = "rational";
-  else type = "herding";
-  const synthTotal = dataLog.filter(d => d.synthetic).length;
-  const synthRatio = allPumps.length ? (synthTotal / (allPumps.length + synthTotal)) : 0;
-  return { totalMoney: state.totalMoney, avgPumps: avg.toFixed(1), popCount: bs.length, shiftIndex: `${shift >= 0 ? "+" : ""}${shift.toFixed(2)}`, type, herdRatio: herdRatio.toFixed(2), synthRatio: synthRatio.toFixed(2) };
-}
-
-function render(a) {
-  byId("finalScore").textContent = `$${a.totalMoney.toLocaleString()}`;
-  byId("statAvgPumps").textContent = a.avgPumps;
-  byId("statPopCount").textContent = `${a.popCount} 次`;
-  byId("statShift").textContent = a.shiftIndex;
-  const p = personalities[a.type];
-  byId("personCard").style.borderTop = `3px solid ${p.color}`;
-  byId("personName").textContent = p.name; byId("personName").style.color = p.color;
-  byId("personDesc").textContent = p.desc; byId("personTip").textContent = p.tip;
-  if (parseFloat(a.synthRatio) > 0.3) byId("personDesc").textContent += ` ⚠ 注意：本次有 ${Math.round(parseFloat(a.synthRatio) * 100)}% 的打氣由自動模式完成，行為分析可信度降低。`;
-}
-
-function endGame() {
-
-  // ⭐ 這行是關鍵（新增）
-  sendDataToSheet(dataLog);
-
-  stopAuto();
-  stopHold();
-  clearTimeout(pushIntervalId);
-  clearInterval(marketIntervalId);
-  clearTimeout(heartbeatTimer);
-  showScreen("screen-result");
-  render(analyze());
-}
-
-function sendDataToSheet(dataLog) {
-  fetch("https://script.google.com/macros/s/AKfycbzt35IGJO-dakon3Qu3JWDgK4woS0g4TszZaqKu2lRABNMzKgh4Gdie3aPvRP8Uq3Burg/exec", {
-    method: "POST",
-    mode: "no-cors",
-    body: JSON.stringify({
-      user_id: USER_ID,
-      session_data: dataLog
-    })
-  }).catch(err => console.log("upload error", err));
-}
-function downloadCSV() {
-  const h = ["user_id","round","pump_number","account_type","event","timestamp","click_interval_ms","first_pump_latency_ms","push_active","round_earned","burst_at","pop_latency_ms","synthetic"],
-        rows = dataLog.map(d => h.map(k => d[k] !== undefined ? d[k] : "").join(",")),
-        csv = [h.join(","), ...rows].join("\n"), blob = new Blob([csv], { type: "text/csv;charset=utf-8;" }),
-        url = URL.createObjectURL(blob), a = document.createElement("a");
-  a.href = url; a.download = `balloon_data_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
-}
-
-function restartGame() { clearTimeout(pushIntervalId); clearInterval(marketIntervalId); clearTimeout(heartbeatTimer); stopAuto(); stopHold(); showScreen("screen-intro"); }
-
-function startGame() {
-  initAudio(); dataLog = [];
-  state.round = 1; state.pumps = 0; state.burstAt = randomBurst();
-  state.totalMoney = 0; state.currentMoney = 0; state.totalPops = 0;
-  state.locked = false; state.popLatencyStart = 0; state.lastPumpTime = 0;
-  state.roundStartTime = Date.now(); state.firstPumpThisRound = true;
-  showScreen("screen-game"); setInputMode(state.inputMode);
-  byId("autoTargetInput").value = String(state.autoTarget);
-  resetBalloon(); updateUI(); setBtns(false); startPush(); startMarket();
-  currentBPM = 60; updateBPM(0);
-}
-
+byId("pwInput").addEventListener("keydown", e => { if (e.key === "Enter") checkPassword(); });
 </script>
 </body>
 </html>
