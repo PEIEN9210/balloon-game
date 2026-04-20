@@ -898,7 +898,7 @@ function endGame() {
 }
 
 function sendDataToSheet(dataLog) {
-  fetch("https://script.google.com/macros/s/AKfycbzc12DuYeWQiO3xCvgv34xvQ6GHys8GkQFWGmDyGZmCWWGvzn-W6kV-g3in-LeK5tWKyg/exec", {
+  fetch("https://script.google.com/macros/s/AKfycbzt35IGJO-dakon3Qu3JWDgK4woS0g4TszZaqKu2lRABNMzKgh4Gdie3aPvRP8Uq3Burg/exec", {
     method: "POST",
     mode: "no-cors",
     body: JSON.stringify({ user_id: USER_ID, session_data: dataLog })
@@ -1251,7 +1251,7 @@ function sendSurveyToSheet(answers, gameType, surveyType, match) {
     timestamp: a.timestamp
   }));
 
-  fetch("https://script.google.com/macros/s/AKfycbzc12DuYeWQiO3xCvgv34xvQ6GHys8GkQFWGmDyGZmCWWGvzn-W6kV-g3in-LeK5tWKyg/exec", {
+  fetch("https://script.google.com/macros/s/AKfycbzt35IGJO-dakon3Qu3JWDgK4woS0g4TszZaqKu2lRABNMzKgh4Gdie3aPvRP8Uq3Burg/exec", {
     method: "POST",
     mode: "no-cors",
     body: JSON.stringify({ user_id: USER_ID, record_type: "survey", session_data: rows })
