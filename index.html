@@ -243,6 +243,18 @@
     .push #pushText { font-size: 20px; }
     .stats-extra { grid-template-columns: 1fr; }
   }
+  /* ── Survey option buttons ── */
+  .survey-opt {
+    width: 100%; padding: 13px 16px; text-align: left;
+    border: 1px solid var(--border); background: var(--surface2);
+    color: var(--text); font-size: 14px; line-height: 1.6;
+    cursor: pointer; transition: .2s; border-radius: 2px;
+  }
+  .survey-opt:hover { border-color: var(--primary); background: rgba(168,85,247,.08); }
+  .survey-opt.selected { border-color: var(--primary); background: rgba(168,85,247,.15); color: #fff; }
+  .survey-opt.correct  { border-color: #1D9E75; background: rgba(29,158,117,.15); }
+  .survey-opt.wrong    { border-color: var(--danger); background: rgba(224,64,251,.12); }
+  .survey-opt:disabled { cursor: not-allowed; }
 </style>
 </head>
 <body>
@@ -363,8 +375,66 @@
     <div style="margin-top:8px"><strong>建議：</strong> <span id="personTip">維持固定的風險上限。</span></div>
   </div>
   <div style="width:100%;max-width:560px;margin-top:14px">
-    <button class="btn" style="width:100%;margin-bottom:8px" onclick="downloadCSV()">下載 CSV</button>
+    <button class="btn" style="width:100%;margin-bottom:8px" id="btnGoSurvey" onclick="goToSurvey()">📋 進行人格驗證問卷</button>
+    <button class="btn alt" style="width:100%;margin-bottom:8px" onclick="downloadCSV()">下載 CSV</button>
     <button class="btn alt" style="width:100%" onclick="restartGame()">重新開始</button>
+  </div>
+</div>
+
+<!-- ══ 問卷畫面 ══ -->
+<div id="screen-survey" class="screen" style="flex-direction:column;align-items:center;justify-content:flex-start;padding:32px 20px;">
+  <div style="width:100%;max-width:560px;">
+
+    <!-- 說明標頭 -->
+    <div style="text-align:center;margin-bottom:24px;">
+      <div class="title" style="font-size:clamp(22px,5vw,38px);margin-bottom:6px;">投資人格驗證問卷</div>
+      <div style="font-size:14px;color:var(--muted);line-height:1.7;max-width:480px;margin:0 auto;">
+        根據你的遊戲表現，我們分析出你的投資決策傾向。<br>
+        以下 <strong style="color:var(--accent);">6 道情境題</strong> 將幫助我們驗證這個結果。<br>
+        <span style="font-size:12px;opacity:.7;">每題皆改編自學術量表，無對錯之分，請依直覺作答。</span>
+      </div>
+    </div>
+
+    <!-- 進度條 -->
+    <div style="margin-bottom:20px;">
+      <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:6px;">
+        <span id="surveyProgressText">問題 1 / 6</span>
+        <span id="surveyTypeTag" style="display:none;"></span>
+      </div>
+      <div style="height:4px;background:var(--border);border-radius:2px;">
+        <div id="surveyProgressBar" style="height:100%;width:16.6%;background:linear-gradient(90deg,var(--accent),var(--primary));border-radius:2px;transition:width .4s;"></div>
+      </div>
+    </div>
+
+    <!-- 問卷卡片 -->
+    <div id="surveyCard" style="background:var(--surface);border:1px solid var(--border);padding:22px 24px;margin-bottom:16px;">
+
+      <!-- 情境描述 -->
+      <div id="surveyScenario" style="font-size:15px;line-height:1.75;color:var(--text);margin-bottom:18px;"></div>
+      <!-- 選項 -->
+      <div id="surveyOptions" style="display:flex;flex-direction:column;gap:10px;"></div>
+    </div>
+
+    <!-- 回饋區（選完後顯示） -->
+    <div id="surveyFeedback" style="display:none;background:var(--surface2);border:1px solid var(--border);border-left:4px solid var(--accent);padding:14px 18px;margin-bottom:16px;font-size:14px;line-height:1.7;color:var(--muted);"></div>
+
+    <!-- 下一題按鈕 -->
+    <button id="surveyNextBtn" onclick="surveyNext()" disabled
+      style="width:100%;padding:14px;font-size:17px;font-weight:700;border:1px solid var(--primary);background:var(--primary);color:#fff;cursor:pointer;opacity:.35;transition:.2s;">
+      下一題 →
+    </button>
+
+    <!-- 完成後顯示 -->
+    <div id="surveyComplete" style="display:none;text-align:center;padding:20px 0;">
+      <div style="font-size:40px;margin-bottom:12px;">✅</div>
+      <div style="font-size:20px;font-weight:800;color:var(--accent);margin-bottom:8px;">問卷填寫完成！</div>
+      <div style="font-size:14px;color:var(--muted);line-height:1.7;margin-bottom:20px;">
+        你的作答已與遊戲行為資料一起上傳。<br>感謝你協助我們的研究！
+      </div>
+      <div id="surveyMatchResult" style="margin-bottom:20px;padding:14px;border:1px solid var(--border);background:var(--surface);font-size:14px;line-height:1.8;"></div>
+      <button class="btn alt" style="width:100%" onclick="restartGame()">重新開始遊戲</button>
+    </div>
+
   </div>
 </div>
 
@@ -940,6 +1010,236 @@ function updateUI() {
   updateMarketUI();
 }
 
+// ══════════════════════════════════════════════
+// 問卷系統（六型人格驗證）
+// 學術依據：
+//  Q1 保守型  — Kahneman & Tversky (1979) Prospect Theory，損失厭惡情境
+//  Q2 理性高效型 — Corter & Chen (2006) RTQ，期望值最大化 vs 情緒干擾
+//  Q3 高風險型 — Zuckerman (1994) 感覺尋求量表，損失後繼續加碼行為
+//  Q4 中間搖擺型 — Kahneman (2011) 框架效應，同決策不同框架
+//  Q5 中間偏高型 — Weber et al. (2002) DOSPERT，金融領域風險容忍
+//  Q6 邊緣不穩定型 — Barratt Impulsiveness Scale (BIS-11)，行為一致性
+// ══════════════════════════════════════════════
+
+const SURVEY_QUESTIONS = [
+  {
+    id: "q_conservative",
+    type: "保守型驗證",
+    basis: "Prospect Theory · Kahneman & Tversky (1979)",
+    scenario: `你的朋友邀請你參加一個投資方案。你有兩個選擇：\n\n選項 A：確定獲得 $3,000 元。\n\n選項 B：有 80% 機率獲得 $4,000 元，有 20% 機率什麼都拿不到。\n\n（注意：選項 B 的數學期望值為 $3,200，比選項 A 高）\n\n你會選擇哪一個？`,
+    options: [
+      { text: "A｜確定拿 $3,000，穩穩落袋", score_types: ["conservative"], value: "A" },
+      { text: "B｜冒點風險，期望值更高的選項", score_types: ["rational","highrisk","highmid"], value: "B" }
+    ],
+    // 保守型預期選A（確定性偏好），其他型選B（期望值導向）
+    expected_conservative: "A",
+    feedback: "📊 研究說明：根據展望理論（Prospect Theory），大多數人即使知道 B 的期望值更高，仍傾向選 A——這稱為「確定性效應」（Certainty Effect）。保守型投資者的損失厭惡程度更強，因此更偏好確定獲得的選項。"
+  },
+  {
+    id: "q_rational",
+    type: "理性高效型驗證",
+    basis: "Risk Tolerance Questionnaire · FinaMetrica / Corter & Chen (2006)",
+    scenario: `你有一筆 $10,000 的投資。市場突然下跌，你的投資縮水到 $7,000（虧損 30%）。\n\n同時，你看到一則新聞說：「多位分析師預測，該市場在未來 6 個月有 65% 機率回升至原始水位，但也有 35% 機率繼續下跌至 $4,000。」\n\n你會怎麼做？`,
+    options: [
+      { text: "立即停損賣出，避免繼續虧損", score_types: ["conservative"], value: "sell" },
+      { text: "持有並觀察，根據數據判斷再決定", score_types: ["rational"], value: "hold" },
+      { text: "加碼買進，趁低點攤平成本", score_types: ["highrisk","highmid"], value: "buy" },
+      { text: "先賣一半，另一半繼續持有", score_types: ["swinging","unstable"], value: "split" }
+    ],
+    expected_rational: "hold",
+    feedback: "📊 研究說明：理性高效型投資者傾向依據概率與數據做出決策（持有），而非受情緒驅動（立即賣出）或過度樂觀（立即加碼）。這與 Corter & Chen (2006) 的風險容忍量表中「數據依賴型」特徵一致。"
+  },
+  {
+    id: "q_highrisk",
+    type: "高風險型驗證",
+    basis: "Sensation Seeking Scale · Zuckerman (1994) + BIS-11",
+    scenario: `你在一個投資遊戲中連續三回合都虧損了，總共損失了 $6,000 元。\n\n現在進入第四回合。你手上還有 $4,000 的本金。\n\n你的直覺反應最接近哪一種？`,
+    options: [
+      { text: "暫停休息，今天先不投了", score_types: ["conservative","anxious"], value: "stop" },
+      { text: "謹慎操作，這回合只投一小部分", score_types: ["rational","swinging"], value: "small" },
+      { text: "正常投入，按原來計畫繼續", score_types: ["highmid"], value: "normal" },
+      { text: "加大投注，想把虧的錢賺回來", score_types: ["highrisk","unstable"], value: "chase" }
+    ],
+    expected_highrisk: "chase",
+    feedback: "📊 研究說明：「追損行為」（Loss Chasing）是高風險型最典型的特徵，也是賭徒謬誤的具體表現。Zuckerman (1994) 的感覺尋求量表顯示，高感覺尋求者在損失後更傾向加大風險以「彌補」，而非退場。"
+  },
+  {
+    id: "q_swinging",
+    type: "中間搖擺型驗證",
+    basis: "Framing Effect · Kahneman (2011) Thinking Fast and Slow",
+    scenario: `請閱讀以下兩個情境，然後告訴我你更像哪一種：\n\n情境一（獲得框架）：你參加一個投資計畫，你會「確定獲得 $2,000 元」。\n\n情境二（損失框架）：你參加同一個計畫，但說明方式改成：「你有 50% 機率損失 $2,000 元，50% 機率不損失任何錢」。\n\n（注意：兩個情境的數學結果是一樣的）\n\n當你知道這兩個是相同情境時，你的感受是？`,
+    options: [
+      { text: "雖然一樣，但情境一感覺明顯好多了，我還是偏好情境一的說法", score_types: ["conservative","swinging"], value: "framed" },
+      { text: "稍微有差，但我能理解它們是一樣的", score_types: ["highmid","swinging"], value: "slight" },
+      { text: "完全沒差，我看數字，不看文字怎麼說", score_types: ["rational"], value: "same" },
+      { text: "我在不同時候可能給不同答案，要看當時心情", score_types: ["unstable","swinging"], value: "depends" }
+    ],
+    expected_swinging: "framed",
+    feedback: "📊 研究說明：框架效應（Framing Effect）是 Kahneman & Tversky 最著名的發現之一：同樣的訊息以「獲得」或「損失」的方式呈現，人們的決策會截然不同。中間搖擺型最容易受到訊息框架的影響，在不同情境下做出不一致的選擇。"
+  },
+  {
+    id: "q_highmid",
+    type: "中間偏高型驗證",
+    basis: "DOSPERT · Weber et al. (2002) Domain-Specific Risk Taking Scale",
+    scenario: `你在考慮兩個投資基金：\n\n基金 A（穩健型）：預期年報酬率 5%，過去 10 年最大年度虧損為 3%。\n\n基金 B（積極型）：預期年報酬率 15%，過去 10 年最大年度虧損為 22%。\n\n你打算把這筆錢投資至少 5 年，不急著用。\n\n你會選擇哪一個，或是如何分配？`,
+    options: [
+      { text: "選穩健型，年報酬 5% 就夠了，我不想承擔大虧損的風險", score_types: ["conservative"], value: "all_A" },
+      { text: "大部分放穩健，小部分放積極，整體偏保守", score_types: ["swinging","rational"], value: "70A_30B" },
+      { text: "大部分放積極，小部分留穩健，整體偏進取", score_types: ["highmid"], value: "40A_60B" },
+      { text: "全押積極型，5 年後高報酬才有意義，虧損我承受得住", score_types: ["highrisk"], value: "all_B" }
+    ],
+    expected_highmid: "40A_60B",
+    feedback: "📊 研究說明：Weber et al. (2002) 的 DOSPERT 量表測量金融領域的風險偏好。中間偏高型傾向在「有一定把握」的條件下承擔較高風險，選擇偏積極但非極端的配置（如 40/60）。這與純保守型（全選 A）和高風險型（全選 B）有明確區隔。"
+  },
+  {
+    id: "q_unstable",
+    type: "邊緣不穩定型驗證",
+    basis: "Barratt Impulsiveness Scale (BIS-11) · 行為一致性測量",
+    scenario: `請誠實回憶你在剛才的遊戲中：\n\n你有沒有發現自己在不同回合中，做了「前後矛盾」的決定？例如：有時候打了很多次才收，有時候才打幾次就收了，而且你自己也說不清楚為什麼。\n\n你的感受最接近哪一種？`,
+    options: [
+      { text: "我很清楚自己每一回合的策略，幾乎沒有前後矛盾", score_types: ["rational","conservative"], value: "consistent" },
+      { text: "大致上有規律，但偶爾會被情緒或訊號影響而改變", score_types: ["swinging","highmid"], value: "mostly" },
+      { text: "蠻常前後不一致的，當下的感覺決定我怎麼做", score_types: ["unstable","highrisk"], value: "inconsistent" },
+      { text: "我根本沒有在想這些，就是隨機打的", score_types: ["unstable"], value: "random" }
+    ],
+    expected_unstable: "inconsistent",
+    feedback: "📊 研究說明：Barratt 衝動量表（BIS-11）的「運動衝動性」（Motor Impulsiveness）子量表，測量的正是行為層面的衝動與不一致性。邊緣不穩定型的核心特徵是「缺乏跨情境一致性」，他們的決策更多受當下狀態驅動，而非固定策略。"
+  }
+];
+
+let surveyCurrentQ = 0;
+let surveyAnswers = [];
+let surveyGameType = "rational"; // 從 analyze() 結果帶入
+
+function goToSurvey() {
+  const analysis = analyze();
+  surveyGameType = analysis.type;
+  surveyCurrentQ = 0;
+  surveyAnswers = [];
+  byId("surveyComplete").style.display = "none";
+  byId("surveyCard").style.display = "block";
+  byId("surveyProgressBar").parentElement.parentElement.style.display = "block";
+  byId("surveyNextBtn").style.display = "block";
+  renderSurveyQ();
+  showScreen("screen-survey");
+  window.scrollTo(0, 0);
+}
+
+function renderSurveyQ() {
+  const q = SURVEY_QUESTIONS[surveyCurrentQ];
+  const total = SURVEY_QUESTIONS.length;
+
+  byId("surveyProgressText").textContent = `問題 ${surveyCurrentQ + 1} / ${total}`;
+  byId("surveyProgressBar").style.width = `${((surveyCurrentQ) / total) * 100}%`;
+  byId("surveyScenario").textContent = q.scenario;
+  byId("surveyFeedback").style.display = "none";
+
+  const nextBtn = byId("surveyNextBtn");
+  nextBtn.disabled = true;
+  nextBtn.style.opacity = ".35";
+  nextBtn.textContent = surveyCurrentQ < total - 1 ? "下一題 →" : "完成問卷 ✓";
+
+  // 渲染選項
+  const container = byId("surveyOptions");
+  container.innerHTML = "";
+  q.options.forEach((opt, idx) => {
+    const btn = document.createElement("button");
+    btn.className = "survey-opt";
+    btn.textContent = opt.text;
+    btn.onclick = () => selectSurveyOption(idx, opt.value, q);
+    container.appendChild(btn);
+  });
+}
+
+function selectSurveyOption(idx, value, q) {
+  // 禁用所有選項
+  const opts = byId("surveyOptions").querySelectorAll(".survey-opt");
+  opts.forEach(b => { b.disabled = true; });
+  opts[idx].classList.add("selected");
+
+  // 記錄答案
+  surveyAnswers.push({
+    question_id: q.id,
+    question_type: q.type,
+    selected_value: value,
+    selected_text: q.options[idx].text,
+    score_types: q.options[idx].score_types,
+    timestamp: Date.now()
+  });
+
+  // 啟用下一題
+  const nextBtn = byId("surveyNextBtn");
+  nextBtn.disabled = false;
+  nextBtn.style.opacity = "1";
+}
+
+function surveyNext() {
+  surveyCurrentQ++;
+  if (surveyCurrentQ < SURVEY_QUESTIONS.length) {
+    renderSurveyQ();
+    window.scrollTo(0, 0);
+  } else {
+    finishSurvey();
+  }
+}
+
+function finishSurvey() {
+  // 計算問卷推斷人格
+  const typeCounts = {};
+  surveyAnswers.forEach(a => {
+    a.score_types.forEach(t => { typeCounts[t] = (typeCounts[t] || 0) + 1; });
+  });
+  const surveyType = Object.entries(typeCounts).sort((a,b) => b[1]-a[1])[0]?.[0] || "rational";
+
+  // 比對遊戲與問卷結果
+  const match = surveyType === surveyGameType;
+  const gamePersonality = personalities[surveyGameType];
+  const surveyPersonality = personalities[surveyType] || gamePersonality;
+
+  // 上傳問卷結果
+  sendSurveyToSheet(surveyAnswers, surveyGameType, surveyType, match);
+
+  // 顯示完成畫面
+  byId("surveyCard").style.display = "none";
+  byId("surveyNextBtn").style.display = "none";
+  byId("surveyProgressBar").style.width = "100%";
+  byId("surveyProgressText").textContent = "問題 6 / 6 · 完成";
+
+  const matchEl = byId("surveyMatchResult");
+  if (match) {
+    matchEl.innerHTML = `
+      <div style="color:var(--accent);font-weight:700;margin-bottom:6px;">✅ 問卷結果與遊戲分析一致</div>
+      <div style="color:var(--muted);">遊戲行為分析：<strong style="color:${gamePersonality.color}">${gamePersonality.name}</strong></div>
+      <div style="color:var(--muted);">問卷自評結果：<strong style="color:${gamePersonality.color}">${gamePersonality.name}</strong></div>
+      <div style="margin-top:8px;font-size:13px;">這代表你的遊戲行為與你對自身投資偏好的認知高度吻合，是有效的行為測量指標。</div>`;
+  } else {
+    matchEl.innerHTML = `
+      <div style="color:var(--primary);font-weight:700;margin-bottom:6px;">🔍 遊戲分析與問卷結果略有差異</div>
+      <div style="color:var(--muted);">遊戲行為分析：<strong style="color:${gamePersonality.color}">${gamePersonality.name}</strong></div>
+      <div style="color:var(--muted);">問卷自評結果：<strong style="color:${surveyPersonality.color}">${surveyPersonality.name}</strong></div>
+      <div style="margin-top:8px;font-size:13px;">這種差異在學術研究中很常見——行為測量（遊戲）與自評（問卷）捕捉的是投資決策的不同面向，兩者合併分析更能呈現完整的決策輪廓。</div>`;
+  }
+
+  byId("surveyComplete").style.display = "block";
+  window.scrollTo(0, 0);
+}
+
+function sendSurveyToSheet(answers, gameType, surveyType, match) {
+  const payload = {
+    user_id: USER_ID,
+    record_type: "survey",
+    game_personality: gameType,
+    survey_personality: surveyType,
+    personality_match: match,
+    timestamp: Date.now(),
+    answers: answers
+  };
+  fetch("https://script.google.com/macros/s/AKfycbzc12DuYeWQiO3xCvgv34xvQ6GHys8GkQFWGmDyGZmCWWGvzn-W6kV-g3in-LeK5tWKyg/exec", {
+    method: "POST",
+    mode: "no-cors",
+    body: JSON.stringify({ user_id: USER_ID, session_data: [payload] })
+  }).catch(err => console.log("survey upload error", err));
+}
 
 </script>
 </body>
