@@ -399,32 +399,50 @@ const pushMessages = [
 ];
 
 // ══════════════════════════════════════════════
-// 更新後的人格定義（增加推播影響率與爆後指數說明）
+// 六型投資人格定義（依實際資料分析更新）
 // ══════════════════════════════════════════════
 const personalities = {
-  emotional: {
-    name: "情緒型",
-    desc: "你在爆球後傾向於大幅提高下一回合的打氣次數，決策容易受情緒波動影響，屬於高風險承擔者。",
-    tip: "建議在每回合開始前設定固定上限，避免在情緒高峰時超出預算。",
-    color: "#e040fb"
-  },
-  anxious: {
-    name: "焦慮型",
-    desc: "你傾向於在打氣次數很少時就收手，對潛在損失非常敏感，寧可放棄收益也要規避風險。",
-    tip: "可以嘗試設定一個「最低打氣目標」，逐步訓練對不確定性的耐受度。",
-    color: "#a855f7"
+  conservative: {
+    name: "保守型",
+    tagline: "損失厭惡 · 風險迴避 · 焦慮型決策",
+    desc: "你對損失極度敏感，傾向在打氣次數很少時就收手，寧可放棄更高收益也要確保安全。每回合的謹慎讓你避開了大多數爆球，但也可能低估了自己的承受能力。",
+    tip: "嘗試設定一個「最低目標打氣數」，逐步拓展你的風險承受區間。",
+    color: "#1D9E75"
   },
   rational: {
-    name: "理性型",
-    desc: "你的每回合策略高度穩定，不論帳戶類型或外部訊號，都能維持一致的決策邏輯，爆球率適中。",
-    tip: "持續使用固定規則是你的優勢，可進一步嘗試根據回合進度動態調整目標值。",
-    color: "#ffe033"
+    name: "理性高效型",
+    tagline: "最優化策略 · 風險計算型 · 高效益",
+    desc: "你不是最保守的，也不是最衝動的——你知道什麼時候該停。每回合策略高度穩定，能在適度風險下實現效益最大化，是所有類型中決策品質最高的。",
+    tip: "你的直覺往往是對的，可進一步嘗試根據回合進度動態微調目標值。",
+    color: "#D4537E"
   },
-  herding: {
-    name: "從眾型",
-    desc: "你的打氣決策容易受到市場訊號（推播通知）影響，當看到他人獲利或虧損時，行為明顯改變。",
-    tip: "練習在看到訊號後停頓 3 秒再決策，把外部資訊當參考而非指令。",
-    color: "#f5c300"
+  highrisk: {
+    name: "高風險型",
+    tagline: "衝動決策 · 感覺刺激型 · 高損失容忍",
+    desc: "你被即時回饋和高潮感驅動，爆球對你來說不是終點，而是重來的起點。打氣次數高、爆球率高，你享受的是過程中的張力與刺激感。",
+    tip: "在每回合開始前設定一個「硬停損點」，讓刺激感保留，但避免因情緒全失。",
+    color: "#D85A30"
+  },
+  swinging: {
+    name: "中間搖擺型",
+    tagline: "情境依賴 · 適應性強 · 中度風險",
+    desc: "你沒有固定的決策模式，對不同情境、不同訊號都有反應。你的行為介於保守與衝動之間，容易受當下狀態影響，是最具彈性也最難預測的類型。",
+    tip: "在遊戲開始前先設定今天的策略方向，減少在過程中被情境拉著走。",
+    color: "#378ADD"
+  },
+  highmid: {
+    name: "中間偏高型",
+    tagline: "高報酬導向 · 風險容忍 · 波動策略",
+    desc: "你願意承擔高於平均的風險，但偶爾仍有理性判斷介入。你追求突破感與高收益，同時對自己的決策有一定的自信，屬於進取型但非完全衝動的玩家。",
+    tip: "了解你的「最佳策略區間」，讓每一次冒險都建立在數據基礎上而非純感覺。",
+    color: "#7F77DD"
+  },
+  unstable: {
+    name: "邊緣不穩定型",
+    tagline: "高度不穩定 · 策略跳躍 · 行為切換",
+    desc: "你的行為模式在不同回合間落差極大——有時極度保守，有時大膽衝刺。這種切換不一定有規律可循，可能受情緒、疲勞或外部訊號共同影響，是最難預測也最值得深入研究的類型。",
+    tip: "嘗試在每回合結束後記錄當時的感受，找出觸發你行為切換的關鍵因素。",
+    color: "#BA7517"
   }
 };
 
@@ -473,6 +491,7 @@ const tutSteps = [
 ];
 
 function goToTutorial() {
+  initAudio();
   tutStep = 0; tutPumps = 0; tutCollected = false; tutBurst = false;
   tutFirstPumpTime = null; tutStartTime = Date.now();
   tutBurstAt = Math.floor(Math.random() * 10) + 8;
@@ -661,7 +680,7 @@ function nextRound() {
 }
 
 // ══════════════════════════════════════════════
-// 更新後的人格分析邏輯（新增推播影響率、爆後行為指數）
+// 六型人格分析邏輯
 // ══════════════════════════════════════════════
 function analyze() {
   const cs = dataLog.filter(d => d.event === "collect" && d.round > 0);
@@ -671,6 +690,9 @@ function analyze() {
   // 平均打氣（只取 collect 回合，標準 BART 計算）
   const avg = cs.length ? cs.reduce((s, d) => s + d.pump_number, 0) / cs.length : 0;
 
+  // 爆球率
+  const bRate = bs.length / Math.max(allRounds.length, 1);
+
   // 帳戶偏移（退休 vs 獎金）
   const rs  = allRounds.filter(d => d.account_type === "retire");
   const bs2 = allRounds.filter(d => d.account_type === "bonus");
@@ -678,13 +700,17 @@ function analyze() {
   const ab  = bs2.length ? bs2.reduce((s, d) => s + d.pump_number, 0) / bs2.length : 0;
   const shift = ar > 0 ? ab / ar - 1 : 0;
 
-  // 推播影響率：打氣時有推播 / 總手動打氣
+  // 推播影響率
   const manualPumps = dataLog.filter(d => d.event === "pump" && !d.synthetic && d.round > 0);
   const herdRatio = manualPumps.length
-    ? manualPumps.filter(d => d.push_active).length / manualPumps.length
-    : 0;
+    ? manualPumps.filter(d => d.push_active).length / manualPumps.length : 0;
 
-  // 爆後行為指數：爆球後下一回合打氣變化率（新增）
+  // 打氣次數標準差（穩定性指標）
+  const pumpNums = allRounds.map(d => d.pump_number);
+  const pumpMean = pumpNums.reduce((s, v) => s + v, 0) / Math.max(pumpNums.length, 1);
+  const pumpStd = Math.sqrt(pumpNums.reduce((s, v) => s + (v - pumpMean) ** 2, 0) / Math.max(pumpNums.length, 1));
+
+  // 爆後行為指數
   const sortedRounds = [...allRounds].sort((a, b) => a.round - b.round);
   const postBurstChanges = [];
   for (let i = 1; i < sortedRounds.length; i++) {
@@ -694,42 +720,59 @@ function analyze() {
     }
   }
   const postBurstIndex = postBurstChanges.length
-    ? postBurstChanges.reduce((s, v) => s + v, 0) / postBurstChanges.length
-    : 0;
+    ? postBurstChanges.reduce((s, v) => s + v, 0) / postBurstChanges.length : 0;
 
-  // ── 人格判斷（四維評分，取最高分）──────────────
+  // ── 六型評分 ────────────────────────────────
   const scores = {
-    emotional : 0,
-    anxious   : 0,
-    rational  : 0,
-    herding   : 0
+    conservative: 0,
+    rational    : 0,
+    highrisk    : 0,
+    swinging    : 0,
+    highmid     : 0,
+    unstable    : 0
   };
 
-  // 情緒型：爆球後打更多 + 爆球率高
-  if (postBurstIndex > 0.5)  scores.emotional += 2;
-  if (postBurstIndex > 0.2)  scores.emotional += 1;
-  if (bs.length / Math.max(allRounds.length, 1) > 0.4) scores.emotional += 2;
+  // 保守型：打氣少、爆球率低、穩定
+  if (avg < 20)               scores.conservative += 3;
+  else if (avg < 28)          scores.conservative += 1;
+  if (bRate < 0.15)           scores.conservative += 3;
+  else if (bRate < 0.25)      scores.conservative += 1;
+  if (pumpStd < 8)            scores.conservative += 1;
 
-  // 焦慮型：平均打氣少 + 爆球率低
-  if (avg < 20)  scores.anxious += 3;
-  else if (avg < 30) scores.anxious += 1;
-  if (bs.length / Math.max(allRounds.length, 1) < 0.2) scores.anxious += 1;
-
-  // 理性型：帳戶偏移小 + 爆球率適中
+  // 理性高效型：打氣中等、爆球率中低、帳戶偏移小、穩定
+  if (avg >= 20 && avg <= 40) scores.rational += 2;
+  if (bRate >= 0.10 && bRate <= 0.30) scores.rational += 2;
   if (Math.abs(shift) < 0.15) scores.rational += 2;
-  if (Math.abs(shift) < 0.25) scores.rational += 1;
-  const bRate = bs.length / Math.max(allRounds.length, 1);
-  if (bRate >= 0.15 && bRate <= 0.45) scores.rational += 1;
+  if (pumpStd < 12)           scores.rational += 1;
 
-  // 從眾型：推播影響率高
-  if (herdRatio > 0.3)  scores.herding += 3;
-  else if (herdRatio > 0.2) scores.herding += 1;
-  if (Math.abs(shift) > 0.3) scores.herding += 1; // 帳戶間差異大也是訊號敏感
+  // 高風險型：打氣多、爆球率高、爆後繼續衝
+  if (avg > 45)               scores.highrisk += 3;
+  else if (avg > 38)          scores.highrisk += 1;
+  if (bRate > 0.60)           scores.highrisk += 3;
+  else if (bRate > 0.50)      scores.highrisk += 1;
+  if (postBurstIndex > 0.5)   scores.highrisk += 2;
 
-  // 取最高分人格
+  // 中間搖擺型：打氣中等、爆球率中等、標準差中高、推播影響高
+  if (avg >= 25 && avg <= 45) scores.swinging += 1;
+  if (bRate >= 0.20 && bRate <= 0.50) scores.swinging += 2;
+  if (pumpStd >= 10 && pumpStd < 20)  scores.swinging += 2;
+  if (herdRatio > 0.25)       scores.swinging += 2;
+
+  // 中間偏高型：打氣中高、爆球率中高、帳戶偏移偏正（獎金帳戶打更多）
+  if (avg >= 35 && avg <= 55) scores.highmid += 2;
+  if (bRate >= 0.35 && bRate <= 0.60) scores.highmid += 2;
+  if (shift > 0.2)            scores.highmid += 2;
+  if (postBurstIndex > 0.2 && postBurstIndex < 1.0) scores.highmid += 1;
+
+  // 邊緣不穩定型：標準差極高、爆後指數極端（大幅上升或大幅下降）
+  if (pumpStd >= 20)          scores.unstable += 4;
+  else if (pumpStd >= 14)     scores.unstable += 2;
+  if (Math.abs(postBurstIndex) > 1.2) scores.unstable += 3;
+  else if (Math.abs(postBurstIndex) > 0.8) scores.unstable += 1;
+  if (bRate > 0.35 && avg > 45) scores.unstable += 1; // 高打氣+高爆球同時存在
+
+  // 取最高分
   let type = Object.entries(scores).sort((a, b) => b[1] - a[1])[0][0];
-
-  // 邊界情況：分數都很低時給理性型
   if (Math.max(...Object.values(scores)) < 2) type = "rational";
 
   const synthTotal = dataLog.filter(d => d.synthetic).length;
@@ -743,6 +786,7 @@ function analyze() {
     type,
     herdRatio: (herdRatio * 100).toFixed(0),
     postBurstIndex: postBurstIndex.toFixed(2),
+    pumpStd: pumpStd.toFixed(1),
     synthRatio: synthRatio.toFixed(2)
   };
 }
@@ -757,6 +801,15 @@ function render(a) {
   const p = personalities[a.type];
   byId("personCard").style.borderTop = `3px solid ${p.color}`;
   byId("personName").textContent = p.name; byId("personName").style.color = p.color;
+  // 顯示 tagline
+  let taglineEl = byId("personTagline");
+  if (!taglineEl) {
+    taglineEl = document.createElement("div");
+    taglineEl.id = "personTagline";
+    taglineEl.style.cssText = "font-size:13px;margin-bottom:10px;letter-spacing:.04em;";
+    byId("personName").insertAdjacentElement("afterend", taglineEl);
+  }
+  taglineEl.textContent = p.tagline; taglineEl.style.color = p.color;
   byId("personDesc").textContent = p.desc; byId("personTip").textContent = p.tip;
   if (parseFloat(a.synthRatio) > 0.3) {
     byId("personDesc").textContent += ` ⚠ 注意：本次有 ${Math.round(parseFloat(a.synthRatio) * 100)}% 的打氣由自動模式完成，行為分析可信度降低。`;
