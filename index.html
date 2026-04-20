@@ -1151,29 +1151,39 @@ function renderSurveyQ() {
   });
 }
 
+let surveyCurrentSelection = null; // 暫存當前題的選擇，按下一題才正式記錄
+
 function selectSurveyOption(idx, value, q) {
-  // 禁用所有選項
+  // 清除所有選項的選中狀態（允許重選）
   const opts = byId("surveyOptions").querySelectorAll(".survey-opt");
-  opts.forEach(b => { b.disabled = true; });
+  opts.forEach(b => b.classList.remove("selected"));
+
+  // 標記選中的選項
   opts[idx].classList.add("selected");
 
-  // 記錄答案
-  surveyAnswers.push({
+  // 暫存選擇（不立即 push，等按下一題才記錄）
+  surveyCurrentSelection = {
     question_id: q.id,
     question_type: q.type,
     selected_value: value,
     selected_text: q.options[idx].text,
     score_types: q.options[idx].score_types,
     timestamp: Date.now()
-  });
+  };
 
-  // 啟用下一題
+  // 啟用下一題按鈕
   const nextBtn = byId("surveyNextBtn");
   nextBtn.disabled = false;
   nextBtn.style.opacity = "1";
 }
 
 function surveyNext() {
+  // 正式記錄當前題答案
+  if (surveyCurrentSelection) {
+    surveyAnswers.push(surveyCurrentSelection);
+    surveyCurrentSelection = null;
+  }
+
   surveyCurrentQ++;
   if (surveyCurrentQ < SURVEY_QUESTIONS.length) {
     renderSurveyQ();
@@ -1225,19 +1235,26 @@ function finishSurvey() {
 }
 
 function sendSurveyToSheet(answers, gameType, surveyType, match) {
-  const payload = {
+  // 把每題答案展開成獨立的列，方便 Apps Script 寫入獨立工作表
+  const rows = answers.map((a, i) => ({
+    record_type: "survey_answer",
     user_id: USER_ID,
-    record_type: "survey",
     game_personality: gameType,
     survey_personality: surveyType,
     personality_match: match,
-    timestamp: Date.now(),
-    answers: answers
-  };
+    question_index: i + 1,
+    question_id: a.question_id,
+    question_type: a.question_type,
+    selected_value: a.selected_value,
+    selected_text: a.selected_text,
+    score_types: a.score_types.join("|"),
+    timestamp: a.timestamp
+  }));
+
   fetch("https://script.google.com/macros/s/AKfycbzc12DuYeWQiO3xCvgv34xvQ6GHys8GkQFWGmDyGZmCWWGvzn-W6kV-g3in-LeK5tWKyg/exec", {
     method: "POST",
     mode: "no-cors",
-    body: JSON.stringify({ user_id: USER_ID, session_data: [payload] })
+    body: JSON.stringify({ user_id: USER_ID, record_type: "survey", session_data: rows })
   }).catch(err => console.log("survey upload error", err));
 }
 
